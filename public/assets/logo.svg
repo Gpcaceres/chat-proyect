@@ -1,0 +1,81 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <style>
+      @keyframes pulse {
+        0%,
+        100% {
+          stroke-width: 7;
+          opacity: 0.65;
+        }
+        50% {
+          stroke-width: 11;
+          opacity: 1;
+        }
+      }
+
+      .frame-ring {
+        animation: pulse 6s ease-in-out infinite;
+      }
+    </style>
+    <radialGradient id="grad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#f4f4f4" />
+      <stop offset="100%" stop-color="#d5d5d5" />
+    </radialGradient>
+    <linearGradient id="tag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff1a4f" />
+      <stop offset="100%" stop-color="#7c0e2f" />
+    </linearGradient>
+    <linearGradient id="frameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6a2fe7" />
+      <stop offset="50%" stop-color="#ff1a4f" />
+      <stop offset="100%" stop-color="#ffe066" />
+    </linearGradient>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" />
+    </filter>
+    <path id="sparkOrbit" d="M110 10c70 0 100 40 100 100s-30 100-100 100S10 170 10 110 40 10 110 10z" fill="none" />
+  </defs>
+  <circle cx="110" cy="110" r="100" fill="url(#grad)" />
+  <g transform="translate(110 110)">
+    <circle class="frame-ring" cx="0" cy="0" r="102" fill="none" stroke="url(#frameGradient)" stroke-width="9" stroke-linecap="round" stroke-dasharray="28 22" />
+    <g transform="rotate(-18)">
+      <circle cx="0" cy="0" r="108" fill="none" stroke="#2d1a52" stroke-opacity="0.15" stroke-width="6" stroke-dasharray="12 18">
+        <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="18s" repeatCount="indefinite" />
+      </circle>
+    </g>
+  </g>
+  <path
+    d="M52 120c30-14 41-35 39-64-1-12-9-25-20-26-12-1-18 13-18 25 0 9 4 26 7 37-14-10-26-3-26 15 0 24 28 36 54 26-11 20-10 39 6 45 14 5 27-3 32-18 5 15 16 23 29 18 17-6 18-29 4-51 27 7 49-5 49-28 0-16-14-26-28-18 3-13 5-29 5-37 0-14-6-25-17-25-11 0-18 10-19 26-1 24 9 39 33 50-39-5-54 12-60 33-7-21-24-35-50-32z"
+    fill="url(#tag)"
+    opacity="0.25"
+  />
+  <g transform="translate(45 70)" fill="#181424">
+    <text x="16" y="60" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="48" font-weight="700" letter-spacing="4">
+      VIRO
+    </text>
+    <text x="38" y="112" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="42" font-weight="700" letter-spacing="3">
+      CHAT
+    </text>
+  </g>
+  <g transform="translate(135 26) rotate(-12)" fill="none" stroke="#6a2fe7" stroke-width="12" stroke-linecap="round">
+    <path d="M0 52c14-21 19-36 10-46" stroke-dasharray="40 22">
+      <animate attributeName="stroke-dashoffset" values="0;40" dur="6s" repeatCount="indefinite" />
+    </path>
+    <path d="M26 50c11-17 18-33 11-46" stroke-dasharray="40 22">
+      <animate attributeName="stroke-dashoffset" values="40;0" dur="6s" repeatCount="indefinite" />
+    </path>
+    <circle cx="12" cy="64" r="10" fill="#ff1a4f" stroke="none">
+      <animate attributeName="r" values="10;14;10" dur="3s" repeatCount="indefinite" />
+    </circle>
+  </g>
+  <circle class="spark" r="6" fill="#ffe066" filter="url(#blur)">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="4s" repeatCount="indefinite" />
+    <animateMotion dur="8s" repeatCount="indefinite" rotate="auto">
+      <mpath xlink:href="#sparkOrbit" />
+    </animateMotion>
+  </circle>
+  <text x="110" y="180" text-anchor="middle" font-family="'Roboto', 'Segoe UI', sans-serif" font-size="16" fill="#3a2c4f" letter-spacing="4">
+    ESPE · PROJECTS
+  </text>
+</svg>
