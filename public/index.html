@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ViroChat - Conecta con el mundo</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="landing" class="screen landing">
+      <div class="landing-card glass">
+        <img src="/assets/logo.svg" alt="ViroChat" class="landing-logo" />
+        <p class="landing-subtitle">Une a las personas desde cualquier lugar</p>
+        <button id="open-login" class="btn primary">Entrar</button>
+      </div>
+    </div>
+
+    <div id="login-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content glass">
+        <button id="close-login" class="modal-close" aria-label="Cerrar">&times;</button>
+        <h2 class="modal-title">¡Bienvenido a ViroChat!</h2>
+        <p class="modal-subtitle">Completa tus datos para registrar tu asistencia</p>
+        <form id="login-form" class="form">
+          <label class="form-field">
+            <span>Nombre</span>
+            <input type="text" id="name" name="name" placeholder="Tu nombre" required />
+          </label>
+          <label class="form-field">
+            <span>Correo electrónico</span>
+            <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" required />
+          </label>
+          <button type="submit" class="btn primary block">Ingresar</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="chat" class="screen chat hidden">
+      <aside class="sidebar glass">
+        <header class="sidebar-header">
+          <button id="back-to-landing" class="back-btn" title="Volver">
+            <span aria-hidden="true">&#8592;</span>
+          </button>
+          <div class="user-info">
+            <p class="user-label">Conectado como</p>
+            <p id="current-user" class="user-name">USERNAME</p>
+          </div>
+        </header>
+
+        <section class="sidebar-section">
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span>Usuarios en línea</span>
+          </div>
+          <ul id="online-users" class="user-list"></ul>
+        </section>
+
+        <section class="sidebar-section downloads">
+          <h3>Archivos recientes</h3>
+          <ul id="recent-files" class="file-list"></ul>
+        </section>
+      </aside>
+
+      <main class="chat-area">
+        <div class="chat-background"></div>
+        <header class="chat-header glass">
+          <h1 class="chat-title">Sala global</h1>
+          <p class="chat-subtitle">Comparte ideas, archivos y buenas vibras</p>
+        </header>
+        <section id="messages" class="messages"></section>
+        <form id="message-form" class="message-form glass">
+          <label class="file-upload" title="Compartir archivo">
+            <input type="file" id="file-input" class="hidden" />
+            <span class="icon">📎</span>
+          </label>
+          <input
+            type="text"
+            id="message-input"
+            class="message-input"
+            placeholder="Escribe tu mensaje"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn send">Enviar</button>
+        </form>
+      </main>
+    </div>
+
+    <template id="message-template">
+      <article class="message">
+        <header class="message-meta">
+          <span class="message-author"></span>
+          <span class="message-time"></span>
+        </header>
+        <p class="message-text"></p>
+      </article>
+    </template>
+
+    <template id="file-template">
+      <article class="message file">
+        <header class="message-meta">
+          <span class="message-author"></span>
+          <span class="message-time"></span>
+        </header>
+        <a class="file-link" target="_blank" rel="noopener noreferrer">
+          <span class="file-icon">⬇️</span>
+          <div class="file-info">
+            <span class="file-name"></span>
+            <span class="file-size"></span>
+          </div>
+        </a>
+      </article>
+    </template>
+
+    <template id="system-template">
+      <article class="message system">
+        <p class="message-text"></p>
+      </article>
+    </template>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/app.js" type="module"></script>
+  </body>
+</html>

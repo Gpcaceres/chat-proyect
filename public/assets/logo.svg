@@ -1,0 +1,35 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#f4f4f4" />
+      <stop offset="100%" stop-color="#d5d5d5" />
+    </radialGradient>
+    <linearGradient id="tag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff1a4f" />
+      <stop offset="100%" stop-color="#7c0e2f" />
+    </linearGradient>
+  </defs>
+  <circle cx="110" cy="110" r="100" fill="url(#grad)" />
+  <path
+    d="M52 120c30-14 41-35 39-64-1-12-9-25-20-26-12-1-18 13-18 25 0 9 4 26 7 37-14-10-26-3-26 15 0 24 28 36 54 26-11 20-10 39 6 45 14 5 27-3 32-18 5 15 16 23 29 18 17-6 18-29 4-51 27 7 49-5 49-28 0-16-14-26-28-18 3-13 5-29 5-37 0-14-6-25-17-25-11 0-18 10-19 26-1 24 9 39 33 50-39-5-54 12-60 33-7-21-24-35-50-32z"
+    fill="url(#tag)"
+    opacity="0.25"
+  />
+  <g transform="translate(45 70)" fill="#181424">
+    <text x="16" y="60" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="48" font-weight="700" letter-spacing="4">
+      VIRO
+    </text>
+    <text x="38" y="112" font-family="'Orbitron', 'Segoe UI', sans-serif" font-size="42" font-weight="700" letter-spacing="3">
+      CHAT
+    </text>
+  </g>
+  <g transform="translate(135 26) rotate(-12)" fill="none" stroke="#6a2fe7" stroke-width="12" stroke-linecap="round">
+    <path d="M0 52c14-21 19-36 10-46" />
+    <path d="M26 50c11-17 18-33 11-46" />
+    <circle cx="12" cy="64" r="10" fill="#ff1a4f" stroke="none" />
+  </g>
+  <text x="110" y="180" text-anchor="middle" font-family="'Roboto', 'Segoe UI', sans-serif" font-size="16" fill="#3a2c4f" letter-spacing="4">
+    ESPE · PROJECTS
+  </text>
+</svg>
