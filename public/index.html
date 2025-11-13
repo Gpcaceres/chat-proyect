@@ -25,17 +25,28 @@
       <div class="modal-content glass">
         <button id="close-login" class="modal-close" aria-label="Cerrar">&times;</button>
         <h2 class="modal-title">¡Bienvenido a ViroChat!</h2>
-        <p class="modal-subtitle">Completa tus datos para registrar tu asistencia</p>
-        <form id="login-form" class="form">
+        <p class="modal-subtitle">Ingresa a una sala segura con tu PIN de acceso</p>
+        <form id="login-form" class="form" autocomplete="off">
           <label class="form-field">
-            <span>Nombre</span>
-            <input type="text" id="name" name="name" placeholder="Tu nombre" required />
+            <span>ID de sala</span>
+            <input type="text" id="room-id" name="roomId" placeholder="Ej. 5f9c-2d8a" minlength="6" required />
           </label>
           <label class="form-field">
-            <span>Correo electrónico</span>
-            <input type="email" id="email" name="email" placeholder="correo@ejemplo.com" required />
+            <span>PIN de acceso</span>
+            <input
+              type="password"
+              id="room-pin"
+              name="pin"
+              placeholder="Mínimo 4 dígitos"
+              pattern="[0-9A-Za-z]{4,}"
+              required
+            />
           </label>
-          <button type="submit" class="btn primary block">Ingresar</button>
+          <label class="form-field">
+            <span>Nickname</span>
+            <input type="text" id="nickname" name="nickname" placeholder="Tu alias" minlength="3" maxlength="32" required />
+          </label>
+          <button type="submit" class="btn primary block">Unirme a la sala</button>
         </form>
       </div>
     </div>
@@ -47,8 +58,8 @@
             <span aria-hidden="true">&#8592;</span>
           </button>
           <div class="user-info">
-            <p class="user-label">Conectado como</p>
-            <p id="current-user" class="user-name">USERNAME</p>
+            <p class="user-label">Identificador</p>
+            <p id="current-user" class="user-name">--</p>
           </div>
         </header>
 
@@ -69,8 +80,14 @@
       <main class="chat-area">
         <div class="chat-background"></div>
         <header class="chat-header glass">
-          <h1 class="chat-title">Sala global</h1>
-          <p class="chat-subtitle">Comparte ideas, archivos y buenas vibras</p>
+          <div>
+            <h1 class="chat-title" id="room-title">Sala segura</h1>
+            <p class="chat-subtitle" id="room-subtitle">Canal cifrado de extremo a extremo</p>
+          </div>
+          <div class="security-status" id="security-indicator" aria-live="polite">
+            <span class="status-dot secure"></span>
+            <span class="security-label">Cifrado activo</span>
+          </div>
         </header>
         <section id="messages" class="messages"></section>
         <form id="message-form" class="message-form glass">
