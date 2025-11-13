@@ -291,6 +291,46 @@ a {
   box-shadow: 0 0 8px rgba(61, 229, 122, 0.9);
 }
 
+.status-dot.secure {
+  background: #3de57a;
+  box-shadow: 0 0 8px rgba(61, 229, 122, 0.9);
+}
+
+.status-dot.warning {
+  background: #f4c542;
+  box-shadow: 0 0 8px rgba(244, 197, 66, 0.8);
+}
+
+.security-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(15, 12, 32, 0.85);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.security-status .security-label {
+  color: var(--text-muted);
+}
+
+.hash-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  background: rgba(0, 245, 255, 0.1);
+  padding: 0.25rem 0.45rem;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .user-list,
 .file-list {
   list-style: none;
@@ -474,6 +514,14 @@ a {
 .file-upload:hover {
   background: rgba(255, 255, 255, 0.14);
   transform: translateY(-1px);
+}
+
+.file-upload.disabled,
+.file-upload.disabled:hover {
+  cursor: not-allowed;
+  opacity: 0.4;
+  background: rgba(255, 255, 255, 0.05);
+  transform: none;
 }
 
 .icon {
