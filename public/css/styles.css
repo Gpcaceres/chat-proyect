@@ -62,6 +62,7 @@ a {
   filter: blur(120px);
   opacity: 0.3;
   z-index: 0;
+  pointer-events: none;
 }
 
 .landing::before {
@@ -81,6 +82,7 @@ a {
 }
 
 .landing-card {
+  position: relative;
   z-index: 1;
   max-width: 420px;
   width: 100%;

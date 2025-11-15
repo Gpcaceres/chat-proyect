@@ -37,22 +37,6 @@ const adminRoomTypeSelect = document.getElementById('room-type');
 const adminRoomPinInput = document.getElementById('room-pin-admin');
 const adminRoomMaxInput = document.getElementById('room-max-size');
 
-const adminModal = document.getElementById('admin-modal');
-const closeAdminBtn = document.getElementById('close-admin');
-const adminLoginForm = document.getElementById('admin-login-form');
-const adminRoomForm = document.getElementById('admin-room-form');
-const adminLoginSection = document.getElementById('admin-login-section');
-const adminRoomSection = document.getElementById('admin-room-section');
-const adminStatus = document.getElementById('admin-status');
-const adminRoomsList = document.getElementById('admin-rooms');
-const adminUsernameInput = document.getElementById('admin-username');
-const adminPasswordInput = document.getElementById('admin-password');
-const adminTokenInput = document.getElementById('admin-token');
-const adminLogoutBtn = document.getElementById('admin-logout');
-const adminRoomTypeSelect = document.getElementById('room-type');
-const adminRoomPinInput = document.getElementById('room-pin-admin');
-const adminRoomMaxInput = document.getElementById('room-max-size');
-
 const messageTemplate = document.getElementById('message-template');
 const fileTemplate = document.getElementById('file-template');
 const systemTemplate = document.getElementById('system-template');
@@ -326,64 +310,6 @@ function resetState() {
   recentFilesList.innerHTML = '';
   loginForm.reset();
   configureFileUpload(false);
-}
-
-function resetAdminSession() {
-  adminToken = null;
-  adminLoginSection?.classList.remove('hidden');
-  adminRoomSection?.classList.add('hidden');
-  adminRoomsList && (adminRoomsList.innerHTML = '');
-  if (adminStatus) {
-    adminStatus.textContent = '';
-  }
-  adminLoginForm?.reset();
-  adminRoomForm?.reset();
-}
-
-function establishAdminSession(username, token, expiresIn) {
-  adminToken = token;
-  if (adminLoginSection) {
-    adminLoginSection.classList.add('hidden');
-  }
-  if (adminRoomSection) {
-    adminRoomSection.classList.remove('hidden');
-  }
-  if (adminStatus) {
-    const minutes = expiresIn ? Math.floor(expiresIn / 60) : null;
-    adminStatus.textContent = minutes
-      ? `Sesión activa para ${username}. El token expira en aproximadamente ${minutes} minutos.`
-      : `Sesión activa para ${username}.`;
-  }
-  adminRoomPinInput?.focus();
-}
-
-function addAdminRoomToList(room) {
-  if (!adminRoomsList) return;
-  const item = document.createElement('li');
-  const title = document.createElement('strong');
-  const typeLabel = room.type === 'multimedia' ? 'Multimedia supervisada' : 'Texto seguro';
-  title.textContent = `Sala ${formatHash(room.roomId)} · ${typeLabel}`;
-
-  const idLine = document.createElement('code');
-  idLine.textContent = `ID: ${room.roomId}`;
-
-  const pinLine = document.createElement('code');
-  pinLine.textContent = `PIN: ${room.pin}`;
-
-  const encryptedLine = document.createElement('code');
-  encryptedLine.textContent = `ID cifrado: ${room.encryptedId}`;
-
-  const meta = document.createElement('small');
-  const createdAt = room.createdAt ? new Date(room.createdAt) : new Date();
-  meta.textContent = `Creada el ${createdAt.toLocaleString('es-ES')}`;
-
-  item.appendChild(title);
-  item.appendChild(meta);
-  item.appendChild(idLine);
-  item.appendChild(pinLine);
-  item.appendChild(encryptedLine);
-
-  adminRoomsList.prepend(item);
 }
 
 function resetAdminSession() {
