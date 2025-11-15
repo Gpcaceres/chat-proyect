@@ -17,7 +17,10 @@
       <div class="landing-card glass">
         <img src="/assets/logo.svg" alt="ViroChat" class="landing-logo" />
         <p class="landing-subtitle">Une a las personas desde cualquier lugar</p>
-        <button id="open-login" class="btn primary">Entrar</button>
+        <div class="landing-actions">
+          <button id="open-login" class="btn primary">Entrar</button>
+          <button id="open-admin" class="btn secondary" type="button">Administrar</button>
+        </div>
       </div>
     </div>
 
@@ -104,7 +107,77 @@
           />
           <button type="submit" class="btn send">Enviar</button>
         </form>
+        <p id="upload-hint" class="upload-hint hidden" aria-live="polite"></p>
       </main>
+    </div>
+
+    <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content glass admin-modal">
+        <button id="close-admin" class="modal-close" aria-label="Cerrar">&times;</button>
+        <h2 class="modal-title">Panel de administración</h2>
+        <p class="modal-subtitle">Gestiona las salas seguras de ViroChat</p>
+
+        <section id="admin-login-section">
+          <form id="admin-login-form" class="form" autocomplete="off">
+            <label class="form-field">
+              <span>Usuario administrador</span>
+              <input id="admin-username" name="username" type="text" minlength="3" required />
+            </label>
+            <label class="form-field">
+              <span>Contraseña</span>
+              <input id="admin-password" name="password" type="password" minlength="6" required />
+            </label>
+            <label class="form-field">
+              <span>Token 2FA (opcional)</span>
+              <input
+                id="admin-token"
+                name="token"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]{6}"
+                placeholder="Código temporal"
+              />
+            </label>
+            <button type="submit" class="btn primary block">Iniciar sesión</button>
+          </form>
+        </section>
+
+        <section id="admin-room-section" class="hidden">
+          <div class="admin-status" id="admin-status" role="status" aria-live="polite"></div>
+          <form id="admin-room-form" class="form admin-room-form">
+            <label class="form-field">
+              <span>Tipo de sala</span>
+              <select id="room-type" name="type">
+                <option value="text">Texto seguro</option>
+                <option value="multimedia">Multimedia supervisada</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>PIN de acceso</span>
+              <input
+                id="room-pin-admin"
+                name="pin"
+                type="text"
+                pattern="[0-9A-Za-z]{4,}"
+                placeholder="Mínimo 4 caracteres"
+                required
+              />
+            </label>
+            <label class="form-field">
+              <span>Tamaño máximo de archivo (MB)</span>
+              <input id="room-max-size" name="maxFileSizeMB" type="number" min="1" max="50" value="10" />
+            </label>
+            <div class="admin-actions">
+              <button type="button" id="admin-logout" class="btn tertiary">Cerrar sesión</button>
+              <button type="submit" class="btn primary">Crear sala segura</button>
+            </div>
+          </form>
+          <div class="admin-results">
+            <h3>Salas generadas</h3>
+            <ul id="admin-rooms" class="admin-room-list"></ul>
+          </div>
+        </section>
+      </div>
     </div>
 
     <template id="message-template">

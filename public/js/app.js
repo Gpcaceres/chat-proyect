@@ -3,6 +3,7 @@ const chatScreen = document.getElementById('chat');
 const loginModal = document.getElementById('login-modal');
 const openLoginBtn = document.getElementById('open-login');
 const closeLoginBtn = document.getElementById('close-login');
+const openAdminBtn = document.getElementById('open-admin');
 const loginForm = document.getElementById('login-form');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
@@ -18,6 +19,23 @@ const roomSubtitle = document.getElementById('room-subtitle');
 const roomIdInput = document.getElementById('room-id');
 const roomPinInput = document.getElementById('room-pin');
 const nicknameInput = document.getElementById('nickname');
+const uploadHint = document.getElementById('upload-hint');
+
+const adminModal = document.getElementById('admin-modal');
+const closeAdminBtn = document.getElementById('close-admin');
+const adminLoginForm = document.getElementById('admin-login-form');
+const adminRoomForm = document.getElementById('admin-room-form');
+const adminLoginSection = document.getElementById('admin-login-section');
+const adminRoomSection = document.getElementById('admin-room-section');
+const adminStatus = document.getElementById('admin-status');
+const adminRoomsList = document.getElementById('admin-rooms');
+const adminUsernameInput = document.getElementById('admin-username');
+const adminPasswordInput = document.getElementById('admin-password');
+const adminTokenInput = document.getElementById('admin-token');
+const adminLogoutBtn = document.getElementById('admin-logout');
+const adminRoomTypeSelect = document.getElementById('room-type');
+const adminRoomPinInput = document.getElementById('room-pin-admin');
+const adminRoomMaxInput = document.getElementById('room-max-size');
 
 const messageTemplate = document.getElementById('message-template');
 const fileTemplate = document.getElementById('file-template');
@@ -28,6 +46,7 @@ let cryptoKey = null;
 let session = null;
 let activeRoom = null;
 const recentFiles = [];
+let adminToken = null;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -39,6 +58,19 @@ openLoginBtn.addEventListener('click', () => {
 
 closeLoginBtn.addEventListener('click', () => {
   loginModal.classList.add('hidden');
+});
+
+openAdminBtn?.addEventListener('click', () => {
+  adminModal?.classList.remove('hidden');
+  if (adminToken) {
+    adminRoomPinInput?.focus();
+  } else {
+    adminUsernameInput?.focus();
+  }
+});
+
+closeAdminBtn?.addEventListener('click', () => {
+  adminModal?.classList.add('hidden');
 });
 
 backButton.addEventListener('click', () => {
@@ -88,6 +120,90 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
+adminLoginForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const username = adminUsernameInput?.value.trim();
+  const password = adminPasswordInput?.value.trim();
+  const token = adminTokenInput?.value.trim();
+
+  if (!username || !password) {
+    showToast('Ingresa usuario y contraseña de administrador.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password, token }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'No se pudo iniciar sesión como administrador.');
+    }
+
+    const payload = await response.json();
+    adminLoginForm.reset();
+    adminPasswordInput?.blur();
+    establishAdminSession(username, payload.token, payload.expiresIn);
+    showToast('Sesión de administrador iniciada.');
+  } catch (error) {
+    showToast(error.message || 'Error al autenticar administrador.');
+  }
+});
+
+adminRoomForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!adminToken) {
+    showToast('Inicia sesión como administrador para crear salas.');
+    return;
+  }
+
+  const type = adminRoomTypeSelect?.value || 'text';
+  const pin = adminRoomPinInput?.value.trim();
+  const maxSizeValue = adminRoomMaxInput?.value;
+  const maxFileSizeMB = maxSizeValue ? Number(maxSizeValue) : undefined;
+
+  if (!pin || pin.length < 4) {
+    showToast('El PIN debe tener al menos 4 caracteres.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/admin/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ type, pin, maxFileSizeMB }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        resetAdminSession();
+      }
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'No se pudo crear la sala.');
+    }
+
+    const room = await response.json();
+    adminRoomPinInput.value = '';
+    addAdminRoomToList({ ...room, pin });
+    showToast('Sala creada correctamente.');
+  } catch (error) {
+    showToast(error.message || 'Error creando sala segura.');
+  }
+});
+
+adminLogoutBtn?.addEventListener('click', () => {
+  resetAdminSession();
+  showToast('Sesión de administrador finalizada.');
+});
+
 messageForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const text = messageInput.value.trim();
@@ -112,6 +228,11 @@ messageForm.addEventListener('submit', async (event) => {
 fileInput.addEventListener('change', async (event) => {
   const file = event.target.files?.[0];
   if (!file || !session) {
+    return;
+  }
+  if (!activeRoom || activeRoom.type !== 'multimedia') {
+    showToast('Esta sala no permite compartir archivos. Solicita una sala multimedia al administrador.');
+    fileInput.value = '';
     return;
   }
 
@@ -161,7 +282,7 @@ async function initializeSession(payload) {
   activeRoom = payload.room;
   cryptoKey = await importSessionKey(payload.sessionKey);
 
-  currentUserLabel.textContent = formatHash(session.nicknameHash);
+  currentUserLabel.textContent = formatAlias(session.displayName, session.nicknameHash);
   roomTitle.textContent = `Sala ${formatHash(activeRoom.id)}`;
   roomSubtitle.textContent =
     activeRoom.type === 'multimedia'
@@ -169,14 +290,7 @@ async function initializeSession(payload) {
       : 'Canal de texto cifrado de extremo a extremo';
   updateSecurityIndicator('secure', 'Cifrado activo');
 
-  const uploadWrapper = fileInput.closest('label');
-  if (activeRoom.type === 'multimedia') {
-    fileInput.removeAttribute('disabled');
-    uploadWrapper?.classList.remove('disabled');
-  } else {
-    fileInput.setAttribute('disabled', 'true');
-    uploadWrapper?.classList.add('disabled');
-  }
+  configureFileUpload(activeRoom.type === 'multimedia');
 
   initializeSocket();
 }
@@ -195,6 +309,65 @@ function resetState() {
   recentFiles.length = 0;
   recentFilesList.innerHTML = '';
   loginForm.reset();
+  configureFileUpload(false);
+}
+
+function resetAdminSession() {
+  adminToken = null;
+  adminLoginSection?.classList.remove('hidden');
+  adminRoomSection?.classList.add('hidden');
+  adminRoomsList && (adminRoomsList.innerHTML = '');
+  if (adminStatus) {
+    adminStatus.textContent = '';
+  }
+  adminLoginForm?.reset();
+  adminRoomForm?.reset();
+}
+
+function establishAdminSession(username, token, expiresIn) {
+  adminToken = token;
+  if (adminLoginSection) {
+    adminLoginSection.classList.add('hidden');
+  }
+  if (adminRoomSection) {
+    adminRoomSection.classList.remove('hidden');
+  }
+  if (adminStatus) {
+    const minutes = expiresIn ? Math.floor(expiresIn / 60) : null;
+    adminStatus.textContent = minutes
+      ? `Sesión activa para ${username}. El token expira en aproximadamente ${minutes} minutos.`
+      : `Sesión activa para ${username}.`;
+  }
+  adminRoomPinInput?.focus();
+}
+
+function addAdminRoomToList(room) {
+  if (!adminRoomsList) return;
+  const item = document.createElement('li');
+  const title = document.createElement('strong');
+  const typeLabel = room.type === 'multimedia' ? 'Multimedia supervisada' : 'Texto seguro';
+  title.textContent = `Sala ${formatHash(room.roomId)} · ${typeLabel}`;
+
+  const idLine = document.createElement('code');
+  idLine.textContent = `ID: ${room.roomId}`;
+
+  const pinLine = document.createElement('code');
+  pinLine.textContent = `PIN: ${room.pin}`;
+
+  const encryptedLine = document.createElement('code');
+  encryptedLine.textContent = `ID cifrado: ${room.encryptedId}`;
+
+  const meta = document.createElement('small');
+  const createdAt = room.createdAt ? new Date(room.createdAt) : new Date();
+  meta.textContent = `Creada el ${createdAt.toLocaleString('es-ES')}`;
+
+  item.appendChild(title);
+  item.appendChild(meta);
+  item.appendChild(idLine);
+  item.appendChild(pinLine);
+  item.appendChild(encryptedLine);
+
+  adminRoomsList.prepend(item);
 }
 
 async function initializeSocket() {
@@ -263,10 +436,17 @@ function renderUserList(users) {
 
   users.forEach((user) => {
     const li = document.createElement('li');
+    const identity = document.createElement('div');
+    identity.classList.add('user-identity');
+    const alias = document.createElement('span');
+    alias.classList.add('user-alias');
+    alias.textContent = formatAlias(user.displayName, user.nicknameHash);
     const hash = document.createElement('span');
     hash.textContent = formatHash(user.nicknameHash);
     hash.classList.add('hash-badge');
-    li.appendChild(hash);
+    identity.appendChild(alias);
+    identity.appendChild(hash);
+    li.appendChild(identity);
     if (user.connectedAt) {
       const meta = document.createElement('span');
       meta.textContent = new Date(user.connectedAt).toLocaleTimeString('es-ES', {
@@ -282,7 +462,9 @@ function renderUserList(users) {
 
 function renderMessage(message) {
   const template = messageTemplate.content.cloneNode(true);
-  template.querySelector('.message-author').textContent = formatHash(message.sender);
+  template
+    .querySelector('.message-author')
+    .textContent = formatAlias(message.senderDisplayName, message.sender);
   template.querySelector('.message-time').textContent = formatTime(message.timestamp);
   template.querySelector('.message-text').textContent = message.text || 'Mensaje cifrado';
   messagesContainer.appendChild(template);
@@ -291,7 +473,9 @@ function renderMessage(message) {
 
 function renderFileMessage(fileMessage) {
   const template = fileTemplate.content.cloneNode(true);
-  template.querySelector('.message-author').textContent = formatHash(fileMessage.sender);
+  template
+    .querySelector('.message-author')
+    .textContent = formatAlias(fileMessage.senderDisplayName, fileMessage.sender);
   template.querySelector('.message-time').textContent = formatTime(fileMessage.timestamp);
   const link = template.querySelector('.file-link');
   link.href = fileMessage.url;
@@ -306,11 +490,12 @@ function renderFileMessage(fileMessage) {
 function renderSystemMessage(systemMessage) {
   const template = systemTemplate.content.cloneNode(true);
   const text = template.querySelector('.message-text');
+  const alias = formatAlias(systemMessage.displayName, systemMessage.user);
 
   if (systemMessage.type === 'join') {
-    text.textContent = `${formatHash(systemMessage.user)} se ha conectado`;
+    text.textContent = `${alias} se ha conectado`;
   } else if (systemMessage.type === 'leave') {
-    text.textContent = `${formatHash(systemMessage.user)} se ha desconectado`;
+    text.textContent = `${alias} se ha desconectado`;
   } else {
     text.textContent = systemMessage.message || 'Notificación del sistema';
   }
@@ -342,7 +527,9 @@ function addRecentFile(fileMessage) {
     const li = document.createElement('li');
     const link = document.createElement('a');
     link.href = file.url;
-    link.textContent = `${formatHash(file.sender)} · ${file.name || file.filename}`;
+    link.textContent = `${formatAlias(file.senderDisplayName, file.sender)} · ${
+      file.name || file.filename
+    }`;
     link.setAttribute('download', file.name || file.filename);
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
@@ -396,6 +583,33 @@ function showToast(message) {
 function formatHash(hash) {
   if (!hash) return '---';
   return hash.replace(/[^A-Za-z0-9]/g, '').slice(0, 10) || '---';
+}
+
+function formatAlias(displayName, hash) {
+  if (displayName && displayName.trim()) {
+    return displayName.trim();
+  }
+  return formatHash(hash);
+}
+
+function configureFileUpload(canUpload) {
+  const uploadWrapper = fileInput.closest('label');
+  if (canUpload) {
+    fileInput.removeAttribute('disabled');
+    uploadWrapper?.classList.remove('disabled');
+    if (uploadHint) {
+      uploadHint.textContent = '';
+      uploadHint.classList.add('hidden');
+    }
+  } else {
+    fileInput.setAttribute('disabled', 'true');
+    uploadWrapper?.classList.add('disabled');
+    if (uploadHint) {
+      uploadHint.textContent =
+        'Adjuntar archivos está disponible únicamente en salas multimedia aprobadas por un administrador.';
+      uploadHint.classList.remove('hidden');
+    }
+  }
 }
 
 function updateSecurityIndicator(state, message) {

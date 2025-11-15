@@ -23,6 +23,7 @@ const {
 const { signToken, verifyToken } = require('./src/security/token');
 const { verifyTotp } = require('./src/security/totp');
 const { analyzeFile } = require('./src/security/stegAnalyzer');
+const { detectFileType } = require('./src/security/fileType');
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI =
@@ -70,21 +71,22 @@ const storage = multer.diskStorage({
   },
 });
 
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'application/pdf',
+  'text/plain',
+  'application/zip',
+];
+
 const upload = multer({
   storage,
   limits: {
     fileSize: 15 * 1024 * 1024,
   },
   fileFilter: (_req, file, cb) => {
-    const allowed = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'application/pdf',
-      'text/plain',
-      'application/zip',
-    ];
-    if (!allowed.includes(file.mimetype)) {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       return cb(new Error('Tipo de archivo no permitido'));
     }
     return cb(null, true);
@@ -206,6 +208,7 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint) {
   const sessionId = crypto.randomUUID();
   roomSessions.set(sessionId, {
     nicknameHash,
+    displayName: nickname,
     nicknameNormalized: normalized,
     fingerprint,
     connectedAt: new Date().toISOString(),
@@ -237,6 +240,7 @@ function getRoomUsers(roomId) {
   if (!roomSessions) return [];
   return Array.from(roomSessions.values()).map((value) => ({
     nicknameHash: value.nicknameHash,
+    displayName: value.displayName,
     connectedAt: value.connectedAt,
   }));
 }
@@ -456,17 +460,50 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       return res.status(400).json({ message: 'El archivo excede el tamaño permitido.' });
     }
 
+    const detectedType = detectFileType(req.file.path);
+    if (!detectedType || !ALLOWED_MIME_TYPES.includes(detectedType.mime)) {
+      fs.unlinkSync(req.file.path);
+      await audit('file_rejected', req.session.displayName, {
+        roomId,
+        reason: 'Tipo de archivo no permitido',
+        detectedMime: detectedType?.mime || 'desconocido',
+      });
+      return res.status(400).json({ message: 'Tipo de archivo no permitido.' });
+    }
+    if (detectedType.mime !== req.file.mimetype) {
+      fs.unlinkSync(req.file.path);
+      await audit('file_rejected', req.session.displayName, {
+        roomId,
+        reason: 'Firma y extensión no coinciden',
+        reportedMime: req.file.mimetype,
+        detectedMime: detectedType.mime,
+      });
+      io.to(roomId).emit('security_alert', {
+        level: 'warning',
+        message: 'Se bloqueó un archivo cuya firma no coincide con la extensión declarada.',
+        detectedMime: detectedType.mime,
+        reportedMime: req.file.mimetype,
+        timestamp: new Date().toISOString(),
+      });
+      return res
+        .status(400)
+        .json({ message: 'El tipo real del archivo no coincide con su extensión.' });
+    }
+
     const analysis = await analyzeFile(req.file.path);
     if (analysis.suspicious) {
       fs.unlinkSync(req.file.path);
       await audit('file_rejected', req.session.displayName, {
         roomId,
         entropy: analysis.entropy,
+        findings: analysis.binwalk?.findings || [],
+        tailBytes: analysis.binwalk?.tail_bytes || 0,
       });
       io.to(roomId).emit('security_alert', {
         level: 'warning',
         message: 'Archivo rechazado por posible esteganografía.',
         entropy: analysis.entropy,
+        findings: analysis.binwalk?.findings || [],
         timestamp: new Date().toISOString(),
       });
       return res
@@ -488,6 +525,7 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       mimetype: req.file.mimetype,
       url: `/uploads/${req.file.filename}`,
       entropy: analysis.entropy,
+      binwalk: analysis.binwalk,
     });
   } catch (error) {
     console.error('Error al subir archivo:', error);
@@ -547,10 +585,13 @@ io.on('connection', (socket) => {
   const session = roomSessions.get(sub);
   session.socketId = socket.id;
   session.connectedAt = new Date().toISOString();
+  session.displayName = session.displayName || displayName;
+  const alias = session.displayName || displayName || nicknameHash;
 
   io.to(roomId).emit('system_message', {
     type: 'join',
     user: nicknameHash,
+    displayName: alias,
     timestamp: new Date().toISOString(),
   });
   io.to(roomId).emit('user_list', getRoomUsers(roomId));
@@ -565,6 +606,7 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('chat_message', {
       sender: nicknameHash,
+      senderDisplayName: alias,
       payload: message.payload,
       timestamp: new Date().toISOString(),
     });
@@ -581,6 +623,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('file_shared', {
       ...fileInfo,
       sender: nicknameHash,
+      senderDisplayName: alias,
       timestamp: new Date().toISOString(),
     });
   });
@@ -591,6 +634,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('system_message', {
       type: 'leave',
       user: nicknameHash,
+      displayName: alias,
       timestamp: new Date().toISOString(),
     });
   });
