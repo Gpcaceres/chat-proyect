@@ -208,6 +208,7 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint) {
   const sessionId = crypto.randomUUID();
   roomSessions.set(sessionId, {
     nicknameHash,
+    displayName: nickname,
     nicknameNormalized: normalized,
     fingerprint,
     connectedAt: new Date().toISOString(),
@@ -239,6 +240,7 @@ function getRoomUsers(roomId) {
   if (!roomSessions) return [];
   return Array.from(roomSessions.values()).map((value) => ({
     nicknameHash: value.nicknameHash,
+    displayName: value.displayName,
     connectedAt: value.connectedAt,
   }));
 }
@@ -579,10 +581,13 @@ io.on('connection', (socket) => {
   const session = roomSessions.get(sub);
   session.socketId = socket.id;
   session.connectedAt = new Date().toISOString();
+  session.displayName = session.displayName || displayName;
+  const alias = session.displayName || displayName || nicknameHash;
 
   io.to(roomId).emit('system_message', {
     type: 'join',
     user: nicknameHash,
+    displayName: alias,
     timestamp: new Date().toISOString(),
   });
   io.to(roomId).emit('user_list', getRoomUsers(roomId));
@@ -597,6 +602,7 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('chat_message', {
       sender: nicknameHash,
+      senderDisplayName: alias,
       payload: message.payload,
       timestamp: new Date().toISOString(),
     });
@@ -613,6 +619,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('file_shared', {
       ...fileInfo,
       sender: nicknameHash,
+      senderDisplayName: alias,
       timestamp: new Date().toISOString(),
     });
   });
@@ -623,6 +630,7 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('system_message', {
       type: 'leave',
       user: nicknameHash,
+      displayName: alias,
       timestamp: new Date().toISOString(),
     });
   });
