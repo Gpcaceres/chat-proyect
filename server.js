@@ -23,6 +23,7 @@ const {
 const { signToken, verifyToken } = require('./src/security/token');
 const { verifyTotp } = require('./src/security/totp');
 const { analyzeFile } = require('./src/security/stegAnalyzer');
+const { detectFileType } = require('./src/security/fileType');
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI =
@@ -70,21 +71,22 @@ const storage = multer.diskStorage({
   },
 });
 
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'application/pdf',
+  'text/plain',
+  'application/zip',
+];
+
 const upload = multer({
   storage,
   limits: {
     fileSize: 15 * 1024 * 1024,
   },
   fileFilter: (_req, file, cb) => {
-    const allowed = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'application/pdf',
-      'text/plain',
-      'application/zip',
-    ];
-    if (!allowed.includes(file.mimetype)) {
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       return cb(new Error('Tipo de archivo no permitido'));
     }
     return cb(null, true);
@@ -454,6 +456,36 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
     if (req.file.size > room.maxFileSizeMB * 1024 * 1024) {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: 'El archivo excede el tamaño permitido.' });
+    }
+
+    const detectedType = detectFileType(req.file.path);
+    if (!detectedType || !ALLOWED_MIME_TYPES.includes(detectedType.mime)) {
+      fs.unlinkSync(req.file.path);
+      await audit('file_rejected', req.session.displayName, {
+        roomId,
+        reason: 'Tipo de archivo no permitido',
+        detectedMime: detectedType?.mime || 'desconocido',
+      });
+      return res.status(400).json({ message: 'Tipo de archivo no permitido.' });
+    }
+    if (detectedType.mime !== req.file.mimetype) {
+      fs.unlinkSync(req.file.path);
+      await audit('file_rejected', req.session.displayName, {
+        roomId,
+        reason: 'Firma y extensión no coinciden',
+        reportedMime: req.file.mimetype,
+        detectedMime: detectedType.mime,
+      });
+      io.to(roomId).emit('security_alert', {
+        level: 'warning',
+        message: 'Se bloqueó un archivo cuya firma no coincide con la extensión declarada.',
+        detectedMime: detectedType.mime,
+        reportedMime: req.file.mimetype,
+        timestamp: new Date().toISOString(),
+      });
+      return res
+        .status(400)
+        .json({ message: 'El tipo real del archivo no coincide con su extensión.' });
     }
 
     const analysis = await analyzeFile(req.file.path);
