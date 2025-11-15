@@ -3,6 +3,7 @@ const chatScreen = document.getElementById('chat');
 const loginModal = document.getElementById('login-modal');
 const openLoginBtn = document.getElementById('open-login');
 const closeLoginBtn = document.getElementById('close-login');
+const openAdminBtn = document.getElementById('open-admin');
 const loginForm = document.getElementById('login-form');
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
@@ -19,6 +20,22 @@ const roomIdInput = document.getElementById('room-id');
 const roomPinInput = document.getElementById('room-pin');
 const nicknameInput = document.getElementById('nickname');
 
+const adminModal = document.getElementById('admin-modal');
+const closeAdminBtn = document.getElementById('close-admin');
+const adminLoginForm = document.getElementById('admin-login-form');
+const adminRoomForm = document.getElementById('admin-room-form');
+const adminLoginSection = document.getElementById('admin-login-section');
+const adminRoomSection = document.getElementById('admin-room-section');
+const adminStatus = document.getElementById('admin-status');
+const adminRoomsList = document.getElementById('admin-rooms');
+const adminUsernameInput = document.getElementById('admin-username');
+const adminPasswordInput = document.getElementById('admin-password');
+const adminTokenInput = document.getElementById('admin-token');
+const adminLogoutBtn = document.getElementById('admin-logout');
+const adminRoomTypeSelect = document.getElementById('room-type');
+const adminRoomPinInput = document.getElementById('room-pin-admin');
+const adminRoomMaxInput = document.getElementById('room-max-size');
+
 const messageTemplate = document.getElementById('message-template');
 const fileTemplate = document.getElementById('file-template');
 const systemTemplate = document.getElementById('system-template');
@@ -28,6 +45,7 @@ let cryptoKey = null;
 let session = null;
 let activeRoom = null;
 const recentFiles = [];
+let adminToken = null;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -39,6 +57,19 @@ openLoginBtn.addEventListener('click', () => {
 
 closeLoginBtn.addEventListener('click', () => {
   loginModal.classList.add('hidden');
+});
+
+openAdminBtn?.addEventListener('click', () => {
+  adminModal?.classList.remove('hidden');
+  if (adminToken) {
+    adminRoomPinInput?.focus();
+  } else {
+    adminUsernameInput?.focus();
+  }
+});
+
+closeAdminBtn?.addEventListener('click', () => {
+  adminModal?.classList.add('hidden');
 });
 
 backButton.addEventListener('click', () => {
@@ -86,6 +117,90 @@ loginForm.addEventListener('submit', async (event) => {
   } catch (error) {
     showToast(error.message || 'Error al acceder a la sala.');
   }
+});
+
+adminLoginForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const username = adminUsernameInput?.value.trim();
+  const password = adminPasswordInput?.value.trim();
+  const token = adminTokenInput?.value.trim();
+
+  if (!username || !password) {
+    showToast('Ingresa usuario y contraseña de administrador.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password, token }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'No se pudo iniciar sesión como administrador.');
+    }
+
+    const payload = await response.json();
+    adminLoginForm.reset();
+    adminPasswordInput?.blur();
+    establishAdminSession(username, payload.token, payload.expiresIn);
+    showToast('Sesión de administrador iniciada.');
+  } catch (error) {
+    showToast(error.message || 'Error al autenticar administrador.');
+  }
+});
+
+adminRoomForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!adminToken) {
+    showToast('Inicia sesión como administrador para crear salas.');
+    return;
+  }
+
+  const type = adminRoomTypeSelect?.value || 'text';
+  const pin = adminRoomPinInput?.value.trim();
+  const maxSizeValue = adminRoomMaxInput?.value;
+  const maxFileSizeMB = maxSizeValue ? Number(maxSizeValue) : undefined;
+
+  if (!pin || pin.length < 4) {
+    showToast('El PIN debe tener al menos 4 caracteres.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/admin/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ type, pin, maxFileSizeMB }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        resetAdminSession();
+      }
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'No se pudo crear la sala.');
+    }
+
+    const room = await response.json();
+    adminRoomPinInput.value = '';
+    addAdminRoomToList({ ...room, pin });
+    showToast('Sala creada correctamente.');
+  } catch (error) {
+    showToast(error.message || 'Error creando sala segura.');
+  }
+});
+
+adminLogoutBtn?.addEventListener('click', () => {
+  resetAdminSession();
+  showToast('Sesión de administrador finalizada.');
 });
 
 messageForm.addEventListener('submit', async (event) => {
@@ -195,6 +310,64 @@ function resetState() {
   recentFiles.length = 0;
   recentFilesList.innerHTML = '';
   loginForm.reset();
+}
+
+function resetAdminSession() {
+  adminToken = null;
+  adminLoginSection?.classList.remove('hidden');
+  adminRoomSection?.classList.add('hidden');
+  adminRoomsList && (adminRoomsList.innerHTML = '');
+  if (adminStatus) {
+    adminStatus.textContent = '';
+  }
+  adminLoginForm?.reset();
+  adminRoomForm?.reset();
+}
+
+function establishAdminSession(username, token, expiresIn) {
+  adminToken = token;
+  if (adminLoginSection) {
+    adminLoginSection.classList.add('hidden');
+  }
+  if (adminRoomSection) {
+    adminRoomSection.classList.remove('hidden');
+  }
+  if (adminStatus) {
+    const minutes = expiresIn ? Math.floor(expiresIn / 60) : null;
+    adminStatus.textContent = minutes
+      ? `Sesión activa para ${username}. El token expira en aproximadamente ${minutes} minutos.`
+      : `Sesión activa para ${username}.`;
+  }
+  adminRoomPinInput?.focus();
+}
+
+function addAdminRoomToList(room) {
+  if (!adminRoomsList) return;
+  const item = document.createElement('li');
+  const title = document.createElement('strong');
+  const typeLabel = room.type === 'multimedia' ? 'Multimedia supervisada' : 'Texto seguro';
+  title.textContent = `Sala ${formatHash(room.roomId)} · ${typeLabel}`;
+
+  const idLine = document.createElement('code');
+  idLine.textContent = `ID: ${room.roomId}`;
+
+  const pinLine = document.createElement('code');
+  pinLine.textContent = `PIN: ${room.pin}`;
+
+  const encryptedLine = document.createElement('code');
+  encryptedLine.textContent = `ID cifrado: ${room.encryptedId}`;
+
+  const meta = document.createElement('small');
+  const createdAt = room.createdAt ? new Date(room.createdAt) : new Date();
+  meta.textContent = `Creada el ${createdAt.toLocaleString('es-ES')}`;
+
+  item.appendChild(title);
+  item.appendChild(meta);
+  item.appendChild(idLine);
+  item.appendChild(pinLine);
+  item.appendChild(encryptedLine);
+
+  adminRoomsList.prepend(item);
 }
 
 async function initializeSocket() {
