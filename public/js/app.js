@@ -52,6 +52,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 const PREVIEWABLE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+const ENTROPY_ALERT_THRESHOLD = 7.985;
 const FILE_PREVIEW_GROUPS = [
   {
     key: 'pdf',
@@ -358,6 +359,10 @@ fileInput.addEventListener('change', async (event) => {
       size: data.size,
       mimetype: data.mimetype,
       entropy: data.entropy,
+      entropyExceeded: data.entropyExceeded,
+      entropyThreshold: data.entropyThreshold,
+      lsb: data.lsb,
+      stegProbe: data.stegProbe,
     });
     showToast('Archivo compartido con éxito.');
   } catch (error) {
@@ -600,6 +605,35 @@ function renderFileMessage(fileMessage) {
   template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
   template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
 
+  const securityMeta = template.querySelector('.file-security');
+  const entropyNode = template.querySelector('.file-entropy');
+  const lsbNode = template.querySelector('.file-lsb');
+  const stegoNode = template.querySelector('.file-stego');
+  const entropyLabel = formatEntropyLabel(fileMessage.entropy);
+  const lsbLabel = formatLsbLabel(fileMessage.lsb);
+  const stegoLabel = formatStegProbeLabel(fileMessage.stegProbe);
+  const hasSecurityInfo = Boolean(entropyLabel || lsbLabel || stegoLabel);
+
+  if (securityMeta) {
+    securityMeta.classList.toggle('hidden', !hasSecurityInfo);
+  }
+  if (entropyNode) {
+    entropyNode.textContent = entropyLabel || '';
+    const entropyValue = Number(fileMessage.entropy);
+    entropyNode.classList.toggle(
+      'metric-alert',
+      Number.isFinite(entropyValue) && entropyValue >= ENTROPY_ALERT_THRESHOLD,
+    );
+  }
+  if (lsbNode) {
+    lsbNode.textContent = lsbLabel || '';
+    lsbNode.classList.toggle('metric-alert', Boolean(fileMessage.lsb?.suspicious));
+  }
+  if (stegoNode) {
+    stegoNode.textContent = stegoLabel || '';
+    stegoNode.classList.toggle('metric-alert', Boolean(fileMessage.stegProbe?.suspicious));
+  }
+
   const previewElements = ensureFilePreviewElements(template);
   const descriptor = getFilePreviewDescriptor(fileMessage);
   resetFilePreview(previewElements);
@@ -728,8 +762,26 @@ function renderSystemMessage(systemMessage) {
 function renderSecurityAlert(alert) {
   const template = systemTemplate.content.cloneNode(true);
   const text = template.querySelector('.message-text');
-  const details = alert?.entropy ? ` (entropía: ${alert.entropy.toFixed(2)})` : '';
-  text.textContent = `Alerta de seguridad: ${alert?.message || 'Actividad sospechosa detectada'}${details}`;
+  const entropyDetails = formatEntropyLabel(alert?.entropy);
+  const lsbDetails = formatLsbLabel(alert?.lsb);
+  const stegDetails = formatStegProbeLabel(alert?.stegProbe);
+  const combinedDetails = [entropyDetails, lsbDetails, stegDetails]
+    .filter(Boolean)
+    .join(' · ');
+  const suffix = combinedDetails ? ` (${combinedDetails})` : '';
+  const hints = [];
+  if (alert?.lsb?.suspicious) {
+    hints.push('Posible ocultamiento en los píxeles de la imagen.');
+  }
+  if (alert?.stegProbe?.requires_password) {
+    hints.push('Se detectó un contenedor esteganográfico protegido.');
+  } else if (alert?.stegProbe?.suspicious) {
+    hints.push('steghide reportó datos ocultos.');
+  }
+  const extraHint = hints.length ? ` ${hints.join(' ')}` : '';
+  text.textContent = `Alerta de seguridad: ${
+    alert?.message || 'Actividad sospechosa detectada'
+  }${suffix}${extraHint}`;
   messagesContainer.appendChild(template);
   scrollMessagesToBottom();
   showToast(alert?.message || 'Se detectó actividad sospechosa.');
@@ -756,7 +808,14 @@ function addRecentFile(fileMessage) {
     link.rel = 'noopener noreferrer';
 
     const meta = document.createElement('span');
-    meta.textContent = humanFileSize(file.size);
+    const metaDetails = [humanFileSize(file.size)];
+    const entropyDetail = formatEntropyLabel(file.entropy);
+    const lsbDetail = formatLsbLabel(file.lsb);
+    const stegoDetail = formatStegProbeLabel(file.stegProbe);
+    if (entropyDetail) metaDetails.push(entropyDetail);
+    if (lsbDetail) metaDetails.push(lsbDetail);
+    if (stegoDetail) metaDetails.push(stegoDetail);
+    meta.textContent = metaDetails.join(' · ');
     meta.classList.add('user-mail');
 
     li.appendChild(link);
@@ -780,6 +839,50 @@ function humanFileSize(size) {
   const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
   const value = size / Math.pow(1024, exponent);
   return `${value.toFixed(value < 10 && exponent > 0 ? 1 : 0)} ${units[exponent]}`;
+}
+
+function formatEntropyLabel(entropy) {
+  const value = Number(entropy);
+  if (!Number.isFinite(value)) {
+    return '';
+  }
+  return `Entropía ${value.toFixed(2)} bits`;
+}
+
+function formatLsbLabel(lsb) {
+  if (!lsb || typeof lsb.ratio !== 'number' || Number.isNaN(lsb.ratio)) {
+    return '';
+  }
+  const percentage = (lsb.ratio * 100).toFixed(1);
+  const base = `LSB ${percentage}%`;
+  const rgbChannels = Array.isArray(lsb.rgb_channels) ? lsb.rgb_channels : [];
+  const flaggedChannels = rgbChannels.filter((channel) => channel?.suspicious);
+  if (flaggedChannels.length > 0) {
+    const label = flaggedChannels.map((channel) => channel.channel).join('/');
+    return `${base} RGB(${label}) ⚠️`;
+  }
+  return lsb.suspicious ? `${base} ⚠️` : base;
+}
+
+function formatStegProbeLabel(stegProbe) {
+  if (!stegProbe || !stegProbe.status || stegProbe.status === 'missing') {
+    return '';
+  }
+  const statusLabels = {
+    password_required: 'STEGO 🔐',
+    embedded_data: 'STEGO ⚠️',
+    possibly_encrypted: 'STEGO cifrado',
+    error: 'Stego indeterminado',
+    no_data: '',
+  };
+  const baseLabel = statusLabels[stegProbe.status] || '';
+  if (!baseLabel) {
+    return '';
+  }
+  if (stegProbe.requires_password) {
+    return `${baseLabel} 🔑`;
+  }
+  return baseLabel;
 }
 
 function scrollMessagesToBottom() {

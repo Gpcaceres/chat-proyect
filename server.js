@@ -520,19 +520,30 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
     }
 
     const analysis = await analyzeFile(req.file.path);
+    const entropyExceeded = Boolean(analysis.entropyExceeded);
+    const entropyThreshold =
+      typeof analysis.entropyThreshold === 'number' ? analysis.entropyThreshold : null;
     if (analysis.suspicious) {
       fs.unlinkSync(req.file.path);
       await audit('file_rejected', req.session.displayName, {
         roomId,
         entropy: analysis.entropy,
+        entropyExceeded,
+        entropyThreshold,
         findings: analysis.binwalk?.findings || [],
         tailBytes: analysis.binwalk?.tail_bytes || 0,
+        lsb: analysis.lsb || null,
+        stegProbe: analysis.stegProbe || null,
       });
       io.to(roomId).emit('security_alert', {
         level: 'warning',
         message: 'Archivo rechazado por posible esteganografía.',
         entropy: analysis.entropy,
+        entropyExceeded,
+        entropyThreshold,
         findings: analysis.binwalk?.findings || [],
+        lsb: analysis.lsb || null,
+        stegProbe: analysis.stegProbe || null,
         timestamp: new Date().toISOString(),
       });
       return res
@@ -545,6 +556,11 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
+      entropy: analysis.entropy,
+      entropyExceeded,
+      entropyThreshold,
+      lsb: analysis.lsb,
+      stegProbe: analysis.stegProbe,
     });
 
     return res.status(201).json({
@@ -554,7 +570,11 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       mimetype: req.file.mimetype,
       url: `/uploads/${req.file.filename}`,
       entropy: analysis.entropy,
+      entropyExceeded,
+      entropyThreshold,
       binwalk: analysis.binwalk,
+      lsb: analysis.lsb,
+      stegProbe: analysis.stegProbe,
     });
   } catch (error) {
     console.error('Error al subir archivo:', error);

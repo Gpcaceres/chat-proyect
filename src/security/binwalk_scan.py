@@ -1,6 +1,14 @@
 import json
 import os
+import shutil
+import subprocess
 import sys
+from io import BytesIO
+
+try:  # Pillow es opcional; si no existe, usamos heurísticas de bytes
+    from PIL import Image  # type: ignore
+except Exception:  # pragma: no cover - dependencia opcional
+    Image = None
 
 
 def build_response(**kwargs):
@@ -63,6 +71,167 @@ def detect_trailing_bytes(data):
     return tail_bytes
 
 
+def probe_steghide(target):
+    """Intenta detectar datos ocultos utilizando steghide.
+
+    Cuando el binario no está disponible simplemente marcamos la función
+    como no soportada y continuamos con el resto de heurísticas.
+    """
+
+    steghide_path = shutil.which('steghide')
+    if not steghide_path:
+        return {
+            'supported': False,
+            'available': False,
+            'suspicious': False,
+            'status': 'missing',
+        }
+
+    try:
+        result = subprocess.run(
+            [steghide_path, 'info', target, '-p', ''],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+        )
+    except Exception as exc:  # pragma: no cover - dependiente del sistema
+        return {
+            'supported': False,
+            'available': True,
+            'suspicious': False,
+            'status': 'error',
+            'error': str(exc),
+        }
+
+    combined_output = f"{result.stdout or ''}\n{result.stderr or ''}".strip()
+    normalized = combined_output.lower()
+
+    status = 'no_data'
+    suspicious = False
+    requires_password = False
+    hint = ''
+
+    if 'could not extract any data with that passphrase' in normalized:
+        status = 'password_required'
+        suspicious = True
+        requires_password = True
+        hint = 'Se detectó un contenedor que requiere contraseña para extraer.'
+    elif 'embedded data' in normalized and result.returncode == 0:
+        status = 'embedded_data'
+        suspicious = True
+        hint = 'steghide indicó la presencia de datos ocultos.'
+    elif 'encryption algorithm' in normalized or 'passphrase' in normalized:
+        status = 'possibly_encrypted'
+        suspicious = True
+        requires_password = 'passphrase' in normalized
+        hint = 'La salida de steghide sugiere cifrado o contraseña.'
+    elif result.returncode != 0:
+        status = 'error'
+
+    truncated_output = combined_output[:2000]
+
+    return {
+        'supported': True,
+        'available': True,
+        'suspicious': suspicious,
+        'requires_password': requires_password,
+        'status': status,
+        'hint': hint,
+        'output': truncated_output,
+    }
+
+
+def analyze_lsb_distribution(data):
+    """Analiza la distribución de bits menos significativos (LSB).
+
+    Si Pillow está disponible, se realiza sobre los pixeles reales. De lo contrario,
+    se evalúa una muestra de bytes del archivo para detectar distribuciones que
+    parezcan demasiado uniformes (indicativo de esteganografía LSB).
+    También se inspeccionan individualmente los canales RGB para detectar
+    esteganografía que únicamente altere un canal de color.
+    """
+
+    def _lsb_suspicion(ones, total_bits, threshold=0.02):
+        if total_bits == 0:
+            return False
+        ratio = ones / total_bits
+        # Una distribución excesivamente uniforme alrededor de 0.5 puede indicar
+        # inserción de datos cifrados en los megapíxeles de la imagen.
+        return total_bits >= 5000 and abs(ratio - 0.5) < threshold
+
+    if Image is not None:
+        try:
+            with Image.open(BytesIO(data)) as img:
+                img = img.convert('RGB')
+                width, height = img.size
+                total_pixels = width * height
+                if total_pixels == 0:
+                    raise ValueError('invalid_image')
+                sample_step = max(1, total_pixels // 400000)
+                ones = 0
+                total_bits = 0
+                channel_ones = {'r': 0, 'g': 0, 'b': 0}
+                channel_bits = {'r': 0, 'g': 0, 'b': 0}
+                for index, (r, g, b) in enumerate(img.getdata()):
+                    if index % sample_step != 0:
+                        continue
+                    ones += (r & 1) + (g & 1) + (b & 1)
+                    total_bits += 3
+                    channel_ones['r'] += r & 1
+                    channel_ones['g'] += g & 1
+                    channel_ones['b'] += b & 1
+                    channel_bits['r'] += 1
+                    channel_bits['g'] += 1
+                    channel_bits['b'] += 1
+                ratio = (ones / total_bits) if total_bits else 0
+                channel_stats = []
+                rgb_alert = False
+                for key, label in (('r', 'R'), ('g', 'G'), ('b', 'B')):
+                    bits = channel_bits[key]
+                    channel_ratio = (channel_ones[key] / bits) if bits else 0
+                    channel_suspicious = bits >= 1500 and abs(channel_ratio - 0.5) < 0.018
+                    rgb_alert = rgb_alert or channel_suspicious
+                    channel_stats.append(
+                        {
+                            'channel': label,
+                            'ratio': channel_ratio,
+                            'bits': bits,
+                            'suspicious': channel_suspicious,
+                        }
+                    )
+                return {
+                    'supported': True,
+                    'method': 'pillow_rgb',
+                    'ratio': ratio,
+                    'pixels_sampled': total_bits // 3,
+                    'rgb_channels': channel_stats,
+                    'rgb_conversion': True,
+                    'suspicious': _lsb_suspicion(ones, total_bits) or rgb_alert,
+                    'width': width,
+                    'height': height,
+                }
+        except Exception:
+            # Caerá al análisis de bytes si Pillow falla o el archivo no es imagen
+            pass
+
+    ones = 0
+    total_bits = 0
+    sample_step = max(1, len(data) // 500000)
+    for idx in range(0, len(data), sample_step):
+        ones += data[idx] & 1
+        total_bits += 1
+    ratio = (ones / total_bits) if total_bits else 0
+    return {
+        'supported': bool(total_bits),
+        'method': 'byte_stream',
+        'ratio': ratio,
+        'bytes_sampled': total_bits,
+        'rgb_conversion': False,
+        'suspicious': _lsb_suspicion(ones, total_bits, threshold=0.015),
+    }
+
+
 def main():
     if len(sys.argv) < 2:
         build_response(error='missing_path')
@@ -78,13 +247,22 @@ def main():
 
     binwalk_result = analyze_with_binwalk(target)
     tail_bytes = detect_trailing_bytes(data)
-    suspicious = binwalk_result.get('suspicious', False) or tail_bytes > 512
+    lsb_analysis = analyze_lsb_distribution(data)
+    stego_probe = probe_steghide(target)
+    suspicious = (
+        binwalk_result.get('suspicious', False)
+        or tail_bytes > 512
+        or lsb_analysis.get('suspicious', False)
+        or stego_probe.get('suspicious', False)
+    )
 
     build_response(
         supported=binwalk_result.get('supported', False),
         findings=binwalk_result.get('findings', []),
         suspicious=suspicious,
         tail_bytes=tail_bytes,
+        lsb_analysis=lsb_analysis,
+        steghide_probe=stego_probe,
     )
 
 
