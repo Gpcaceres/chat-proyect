@@ -482,6 +482,15 @@ function renderFileMessage(fileMessage) {
   link.setAttribute('download', fileMessage.name || fileMessage.filename);
   template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
   template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
+  const previewWrapper = template.querySelector('.file-preview');
+  const previewImage = previewWrapper?.querySelector('img');
+  if (previewWrapper && previewImage && shouldDisplayThumbnail(fileMessage)) {
+    previewImage.src = fileMessage.url;
+    previewImage.alt = `Vista previa de ${fileMessage.name || fileMessage.filename}`;
+    previewWrapper.classList.remove('hidden');
+  } else if (previewWrapper) {
+    previewWrapper.remove();
+  }
   messagesContainer.appendChild(template);
   addRecentFile(fileMessage);
   scrollMessagesToBottom();
@@ -610,6 +619,16 @@ function configureFileUpload(canUpload) {
       uploadHint.classList.remove('hidden');
     }
   }
+}
+
+function shouldDisplayThumbnail(fileMessage) {
+  const mime = (fileMessage?.mimetype || '').toLowerCase();
+  if (mime.startsWith('image/')) {
+    return true;
+  }
+  const lowerName = (fileMessage?.name || fileMessage?.filename || '').toLowerCase();
+  const previewableExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+  return previewableExtensions.some((ext) => lowerName.endsWith(ext));
 }
 
 function updateSecurityIndicator(state, message) {
