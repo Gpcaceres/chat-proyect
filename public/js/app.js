@@ -51,6 +51,99 @@ let adminToken = null;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+const PREVIEWABLE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+const FILE_PREVIEW_GROUPS = [
+  {
+    key: 'pdf',
+    label: 'Documento PDF',
+    icon: '📕',
+    accentClass: 'preview-pdf',
+    extensions: ['.pdf'],
+    mimetypes: ['application/pdf'],
+  },
+  {
+    key: 'document',
+    label: 'Documento',
+    icon: '📄',
+    accentClass: 'preview-document',
+    extensions: ['.doc', '.docx', '.odt', '.rtf'],
+    mimetypes: [
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/rtf',
+    ],
+  },
+  {
+    key: 'text',
+    label: 'Archivo de texto',
+    icon: '📘',
+    accentClass: 'preview-document',
+    extensions: ['.txt', '.md', '.json', '.log'],
+    mimetypes: ['text/plain', 'application/json'],
+  },
+  {
+    key: 'presentation',
+    label: 'Presentación',
+    icon: '📊',
+    accentClass: 'preview-presentation',
+    extensions: ['.ppt', '.pptx', '.odp', '.key'],
+    mimetypes: [
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    ],
+  },
+  {
+    key: 'spreadsheet',
+    label: 'Hoja de cálculo',
+    icon: '📈',
+    accentClass: 'preview-spreadsheet',
+    extensions: ['.xls', '.xlsx', '.csv', '.ods'],
+    mimetypes: [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+    ],
+  },
+  {
+    key: 'archive',
+    label: 'Archivo comprimido',
+    icon: '🗜️',
+    accentClass: 'preview-archive',
+    extensions: ['.zip', '.rar', '.7z', '.tar', '.gz'],
+    mimetypes: ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed'],
+  },
+  {
+    key: 'audio',
+    label: 'Audio',
+    icon: '🎧',
+    accentClass: 'preview-audio',
+    extensions: ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a'],
+    mimetypes: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac'],
+  },
+  {
+    key: 'video',
+    label: 'Video',
+    icon: '🎬',
+    accentClass: 'preview-video',
+    extensions: ['.mp4', '.mov', '.avi', '.mkv', '.webm'],
+    mimetypes: ['video/mp4', 'video/webm', 'video/quicktime'],
+  },
+  {
+    key: 'link',
+    label: 'Enlace compartido',
+    icon: '🔗',
+    accentClass: 'preview-link',
+    predicate: (fileMessage) => isExternalUrl(fileMessage?.url),
+  },
+];
+
+const PREVIEW_ACCENT_CLASSES = Array.from(
+  new Set(FILE_PREVIEW_GROUPS.map((group) => group.accentClass || 'preview-generic'))
+);
+if (!PREVIEW_ACCENT_CLASSES.includes('preview-generic')) {
+  PREVIEW_ACCENT_CLASSES.push('preview-generic');
+}
+
 openLoginBtn.addEventListener('click', () => {
   loginModal.classList.remove('hidden');
   roomIdInput.focus();
@@ -482,6 +575,44 @@ function renderFileMessage(fileMessage) {
   link.setAttribute('download', fileMessage.name || fileMessage.filename);
   template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
   template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
+  const previewWrapper = template.querySelector('.file-preview');
+  const previewImage = previewWrapper?.querySelector('.file-preview-image');
+  const previewMeta = previewWrapper?.querySelector('.file-preview-meta');
+  const previewIcon = previewWrapper?.querySelector('.file-preview-icon');
+  const previewType = previewWrapper?.querySelector('.file-preview-type');
+  const previewHint = previewWrapper?.querySelector('.file-preview-hint');
+  const descriptor = getFilePreviewDescriptor(fileMessage);
+  previewWrapper?.classList.add('hidden');
+  previewWrapper?.classList.remove('as-image', 'as-meta');
+  previewImage?.setAttribute('src', '');
+  previewImage?.setAttribute('alt', '');
+  if (previewMeta) {
+    previewMeta.classList.add('hidden');
+    PREVIEW_ACCENT_CLASSES.forEach((cls) => previewMeta.classList.remove(cls));
+  }
+  if (descriptor?.mode === 'image' && previewWrapper && previewImage) {
+    previewImage.src = fileMessage.url;
+    previewImage.alt = `Vista previa de ${fileMessage.name || fileMessage.filename}`;
+    previewWrapper.classList.add('as-image');
+    previewWrapper.classList.remove('hidden');
+  } else if (
+    descriptor?.mode === 'meta' &&
+    previewWrapper &&
+    previewMeta &&
+    previewIcon &&
+    previewType &&
+    previewHint
+  ) {
+    previewIcon.textContent = descriptor.icon;
+    previewType.textContent = descriptor.label;
+    previewHint.textContent = descriptor.hint;
+    previewMeta.classList.remove('hidden');
+    previewMeta.classList.add(descriptor.accentClass || 'preview-generic');
+    previewWrapper.classList.add('as-meta');
+    previewWrapper.classList.remove('hidden');
+  } else if (previewWrapper) {
+    previewWrapper.remove();
+  }
   messagesContainer.appendChild(template);
   addRecentFile(fileMessage);
   scrollMessagesToBottom();
@@ -609,6 +740,99 @@ function configureFileUpload(canUpload) {
         'Adjuntar archivos está disponible únicamente en salas multimedia aprobadas por un administrador.';
       uploadHint.classList.remove('hidden');
     }
+  }
+}
+
+function shouldDisplayThumbnail(fileMessage) {
+  const mime = (fileMessage?.mimetype || '').toLowerCase();
+  if (mime.startsWith('image/')) {
+    return true;
+  }
+  const extension = getFileExtension(fileMessage);
+  return PREVIEWABLE_IMAGE_EXTENSIONS.includes(extension);
+}
+
+function getFilePreviewDescriptor(fileMessage) {
+  if (!fileMessage) {
+    return null;
+  }
+  if (shouldDisplayThumbnail(fileMessage)) {
+    return { mode: 'image' };
+  }
+  const group = FILE_PREVIEW_GROUPS.find((item) => matchesPreviewGroup(fileMessage, item));
+  if (!group) {
+    return null;
+  }
+  return {
+    mode: 'meta',
+    label: group.label,
+    icon: group.icon || '📎',
+    accentClass: group.accentClass || 'preview-generic',
+    hint: formatPreviewHint(fileMessage, group),
+  };
+}
+
+function matchesPreviewGroup(fileMessage, group = {}) {
+  if (typeof group.predicate === 'function') {
+    return group.predicate(fileMessage);
+  }
+  const mime = (fileMessage?.mimetype || '').toLowerCase();
+  if (group.mimetypes?.some((type) => mime === type)) {
+    return true;
+  }
+  const extension = getFileExtension(fileMessage);
+  if (!extension) {
+    return false;
+  }
+  return group.extensions?.some((ext) => extension === ext);
+}
+
+function getFileExtension(fileMessage) {
+  const lowerName = (fileMessage?.name || fileMessage?.filename || '').toLowerCase();
+  const lastDot = lowerName.lastIndexOf('.');
+  if (lastDot === -1) {
+    return '';
+  }
+  return lowerName.slice(lastDot);
+}
+
+function formatPreviewHint(fileMessage, group) {
+  if (group?.key === 'link') {
+    return getDisplayHost(fileMessage?.url) || 'Abrir enlace seguro';
+  }
+  const extension = getFileExtension(fileMessage);
+  const sizeLabel = humanFileSize(fileMessage?.size);
+  const parts = [];
+  if (extension) {
+    parts.push(extension.replace('.', '').toUpperCase());
+  }
+  if (sizeLabel) {
+    parts.push(sizeLabel);
+  }
+  return parts.join(' • ') || 'Haz clic para descargar';
+}
+
+function getDisplayHost(url) {
+  if (!url) {
+    return '';
+  }
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.hostname.replace(/^www\./, '');
+  } catch (error) {
+    return '';
+  }
+}
+
+function isExternalUrl(url) {
+  if (!url) {
+    return false;
+  }
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.origin !== window.location.origin;
+  } catch (error) {
+    return false;
   }
 }
 
