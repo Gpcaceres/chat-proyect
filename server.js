@@ -527,12 +527,16 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
         entropy: analysis.entropy,
         findings: analysis.binwalk?.findings || [],
         tailBytes: analysis.binwalk?.tail_bytes || 0,
+        lsb: analysis.lsb || null,
+        stegProbe: analysis.stegProbe || null,
       });
       io.to(roomId).emit('security_alert', {
         level: 'warning',
         message: 'Archivo rechazado por posible esteganografía.',
         entropy: analysis.entropy,
         findings: analysis.binwalk?.findings || [],
+        lsb: analysis.lsb || null,
+        stegProbe: analysis.stegProbe || null,
         timestamp: new Date().toISOString(),
       });
       return res
@@ -545,6 +549,8 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
+      lsb: analysis.lsb,
+      stegProbe: analysis.stegProbe,
     });
 
     return res.status(201).json({
@@ -555,6 +561,8 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       url: `/uploads/${req.file.filename}`,
       entropy: analysis.entropy,
       binwalk: analysis.binwalk,
+      lsb: analysis.lsb,
+      stegProbe: analysis.stegProbe,
     });
   } catch (error) {
     console.error('Error al subir archivo:', error);

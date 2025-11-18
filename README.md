@@ -19,7 +19,7 @@ ViroChat es un chat en tiempo real cifrado de extremo a extremo con análisis av
 
 - **Cifrado E2E**: AES-256-GCM en cliente y servidor
 - **Autenticación Fuerte**: PBKDF2-SHA256 + TOTP 2FA
-- **Análisis de Seguridad**: Detección de esteganografía y análisis de entropía
+- **Análisis de Seguridad**: Detección de esteganografía con entropía, binwalk, LSB y pruebas de extracción Steghide
 - **Rate Limiting**: 100 solicitudes/minuto por IP
 - **Auditoría Completa**: HMAC-SHA256 de eventos
 - **Salas Seguras**: PIN protegido, tipos text/multimedia
@@ -62,6 +62,8 @@ ViroChat es un chat en tiempo real cifrado de extremo a extremo con análisis av
 - Análisis de entropía de Shannon (0-8 bits)
 - Umbral sospechoso: >8.2 + bytes finales
 - Escaneo binwalk para archivos ocultos
+- Heurística LSB sobre megapíxeles (detección de patrones uniformes)
+- Probing de Steghide para detectar contenedores cifrados o protegidos con contraseña
 - Validación de magic numbers vs extensión
 
 #### **5. Validación de Archivos**
