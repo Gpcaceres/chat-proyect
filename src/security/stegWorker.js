@@ -3,6 +3,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { parentPort } = require('worker_threads');
 
+const ENTROPY_SUSPICIOUS_THRESHOLD = 7.985;
+
 function runPythonScan(filePath) {
   try {
     const scriptPath = path.join(__dirname, 'binwalk_scan.py');
@@ -24,6 +26,7 @@ function runPythonScan(filePath) {
       anomalies: parsed.anomalies || [],
       tail_bytes: parsed.tail_bytes || 0,
       suspicious: Boolean(parsed.suspicious),
+<<<<<<< HEAD
       steg_score: parsed.steg_score || 0,
       entropy: parsed.entropy || 0,
       indicators_count: parsed.indicators_count || 0,
@@ -36,6 +39,19 @@ function runPythonScan(filePath) {
       error: error.message,
       anomalies: [],
       suspicious: false,
+=======
+      lsb: parsed.lsb_analysis || null,
+      stegProbe: parsed.steghide_probe || null,
+    };
+  } catch (error) {
+    return {
+      supported: false,
+      findings: [],
+      tail_bytes: 0,
+      error: error.message,
+      lsb: null,
+      stegProbe: null,
+>>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
     };
   }
 }
@@ -196,6 +212,7 @@ parentPort.on('message', (filePath) => {
     // PASO 1: DETECCIÓN ESPECÍFICA
     const stegAnalysis = detectStegPatterns(buffer);
     const entropy = calculateEntropy(buffer);
+<<<<<<< HEAD
     
     let suspicious = false;
     let scanResult = null;
@@ -299,6 +316,22 @@ parentPort.on('message', (filePath) => {
         stegPatterns: stegAnalysis.patterns,
         trustLevel: stegAnalysis.trustLevel,
       }
+=======
+    const scanResult = runPythonScan(filePath);
+    const suspiciousEntropy =
+      entropy >= ENTROPY_SUSPICIOUS_THRESHOLD && scanResult.tail_bytes > 0;
+    const lsbSuspicious = Boolean(scanResult.lsb?.suspicious);
+    const stegSuspicious = Boolean(scanResult.stegProbe?.suspicious);
+    const suspicious = Boolean(
+      scanResult.suspicious || suspiciousEntropy || lsbSuspicious || stegSuspicious,
+    );
+    parentPort.postMessage({
+      entropy,
+      suspicious,
+      binwalk: scanResult,
+      lsb: scanResult.lsb,
+      stegProbe: scanResult.stegProbe,
+>>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
     });
   } catch (error) {
     // En caso de error, permitir por defecto

@@ -420,6 +420,35 @@ app.post('/api/rooms/access', async (req, res) => {
   }
 });
 
+app.post('/api/rooms/:roomId/leave', authenticateUser, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { roomId: sessionRoomId, sub, displayName, nicknameHash } = req.session;
+    if (roomId !== sessionRoomId) {
+      return res.status(403).json({ message: 'No autorizado para esta sala.' });
+    }
+
+    const roomSessions = sessionRegistry.get(roomId);
+    const hadSession = Boolean(roomSessions?.has(sub));
+    unregisterSession(roomId, sub);
+
+    if (hadSession) {
+      const rawReason = typeof req.body?.reason === 'string' ? req.body.reason : 'manual_exit';
+      const reason = rawReason.substring(0, 120) || 'manual_exit';
+      await audit('room_session_terminated', displayName || nicknameHash, {
+        roomId,
+        sessionId: sub,
+        reason,
+      });
+    }
+
+    return res.json({ released: hadSession });
+  } catch (error) {
+    console.error('Error al finalizar sesión de sala:', error);
+    return res.status(500).json({ message: 'No se pudo finalizar la sesión.' });
+  }
+});
+
 app.post('/api/login', async (req, res) => {
   try {
     const { name, email } = req.body;
@@ -535,6 +564,7 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
         findings: analysis.binwalk?.findings || [],
         anomalies: analysis.binwalk?.anomalies || [],
         tailBytes: analysis.binwalk?.tail_bytes || 0,
+<<<<<<< HEAD
         detectionReasons: analysis.detectionReasons,
         hasSteg: analysis.hasSteg,
       });
@@ -552,6 +582,18 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
           anomalies: analysis.binwalk?.anomalies || [],
           tailBytes: analysis.binwalk?.tail_bytes || 0,
         },
+=======
+        lsb: analysis.lsb || null,
+        stegProbe: analysis.stegProbe || null,
+      });
+      io.to(roomId).emit('security_alert', {
+        level: 'warning',
+        message: 'Archivo rechazado por posible esteganografía.',
+        entropy: analysis.entropy,
+        findings: analysis.binwalk?.findings || [],
+        lsb: analysis.lsb || null,
+        stegProbe: analysis.stegProbe || null,
+>>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
         timestamp: new Date().toISOString(),
       });
       return res.status(400).json({ 
@@ -567,8 +609,13 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
+<<<<<<< HEAD
       hasSteg: analysis.hasSteg,
       entropy: analysis.entropy,
+=======
+      lsb: analysis.lsb,
+      stegProbe: analysis.stegProbe,
+>>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
     });
 
     console.log(`   ✅ ARCHIVO ACEPTADO Y GUARDADO: ${req.file.filename}\n`);
@@ -581,6 +628,8 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       url: `/uploads/${req.file.filename}`,
       entropy: analysis.entropy,
       binwalk: analysis.binwalk,
+      lsb: analysis.lsb,
+      stegProbe: analysis.stegProbe,
     });
   } catch (error) {
     console.error('Error al subir archivo:', error);
