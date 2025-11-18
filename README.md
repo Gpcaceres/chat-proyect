@@ -36,8 +36,7 @@ ViroChat es un chat en tiempo real cifrado de extremo a extremo con análisis av
 
 **Diagrama de Secuencia:**
 
-![Diagrama](diagramaflujo.png) 
-
+![Diagrama](img/diagramaflujo.png) 
 
 ### Detalles de Seguridad
 
