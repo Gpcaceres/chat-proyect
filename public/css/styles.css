@@ -750,6 +750,27 @@ a {
   color: var(--text-muted);
 }
 
+.file-security {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(154, 167, 199, 0.85);
+}
+
+.file-security span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.file-security .metric-alert {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
 .message-form {
   position: relative;
   z-index: 1;

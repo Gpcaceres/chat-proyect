@@ -1,6 +1,12 @@
 import json
 import os
 import sys
+from io import BytesIO
+
+try:  # Pillow es opcional; si no existe, usamos heurísticas de bytes
+    from PIL import Image  # type: ignore
+except Exception:  # pragma: no cover - dependencia opcional
+    Image = None
 
 
 def build_response(**kwargs):
@@ -63,6 +69,68 @@ def detect_trailing_bytes(data):
     return tail_bytes
 
 
+def analyze_lsb_distribution(data):
+    """Analiza la distribución de bits menos significativos (LSB).
+
+    Si Pillow está disponible, se realiza sobre los pixeles reales. De lo contrario,
+    se evalúa una muestra de bytes del archivo para detectar distribuciones que
+    parezcan demasiado uniformes (indicativo de esteganografía LSB).
+    """
+
+    def _lsb_suspicion(ones, total_bits, threshold=0.02):
+        if total_bits == 0:
+            return False
+        ratio = ones / total_bits
+        # Una distribución excesivamente uniforme alrededor de 0.5 puede indicar
+        # inserción de datos cifrados en los megapíxeles de la imagen.
+        return total_bits >= 5000 and abs(ratio - 0.5) < threshold
+
+    if Image is not None:
+        try:
+            with Image.open(BytesIO(data)) as img:
+                img = img.convert('RGB')
+                width, height = img.size
+                total_pixels = width * height
+                if total_pixels == 0:
+                    raise ValueError('invalid_image')
+                sample_step = max(1, total_pixels // 400000)
+                ones = 0
+                total_bits = 0
+                for index, (r, g, b) in enumerate(img.getdata()):
+                    if index % sample_step != 0:
+                        continue
+                    ones += (r & 1) + (g & 1) + (b & 1)
+                    total_bits += 3
+                ratio = (ones / total_bits) if total_bits else 0
+                return {
+                    'supported': True,
+                    'method': 'pillow',
+                    'ratio': ratio,
+                    'pixels_sampled': total_bits // 3,
+                    'suspicious': _lsb_suspicion(ones, total_bits),
+                    'width': width,
+                    'height': height,
+                }
+        except Exception:
+            # Caerá al análisis de bytes si Pillow falla o el archivo no es imagen
+            pass
+
+    ones = 0
+    total_bits = 0
+    sample_step = max(1, len(data) // 500000)
+    for idx in range(0, len(data), sample_step):
+        ones += data[idx] & 1
+        total_bits += 1
+    ratio = (ones / total_bits) if total_bits else 0
+    return {
+        'supported': bool(total_bits),
+        'method': 'byte_stream',
+        'ratio': ratio,
+        'bytes_sampled': total_bits,
+        'suspicious': _lsb_suspicion(ones, total_bits, threshold=0.015),
+    }
+
+
 def main():
     if len(sys.argv) < 2:
         build_response(error='missing_path')
@@ -78,13 +146,19 @@ def main():
 
     binwalk_result = analyze_with_binwalk(target)
     tail_bytes = detect_trailing_bytes(data)
-    suspicious = binwalk_result.get('suspicious', False) or tail_bytes > 512
+    lsb_analysis = analyze_lsb_distribution(data)
+    suspicious = (
+        binwalk_result.get('suspicious', False)
+        or tail_bytes > 512
+        or lsb_analysis.get('suspicious', False)
+    )
 
     build_response(
         supported=binwalk_result.get('supported', False),
         findings=binwalk_result.get('findings', []),
         suspicious=suspicious,
         tail_bytes=tail_bytes,
+        lsb_analysis=lsb_analysis,
     )
 
 
