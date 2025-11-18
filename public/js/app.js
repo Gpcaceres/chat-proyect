@@ -358,6 +358,7 @@ fileInput.addEventListener('change', async (event) => {
       size: data.size,
       mimetype: data.mimetype,
       entropy: data.entropy,
+      lsb: data.lsb,
     });
     showToast('Archivo compartido con éxito.');
   } catch (error) {
@@ -600,6 +601,25 @@ function renderFileMessage(fileMessage) {
   template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
   template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
 
+  const securityMeta = template.querySelector('.file-security');
+  const entropyNode = template.querySelector('.file-entropy');
+  const lsbNode = template.querySelector('.file-lsb');
+  const entropyLabel = formatEntropyLabel(fileMessage.entropy);
+  const lsbLabel = formatLsbLabel(fileMessage.lsb);
+  const hasSecurityInfo = Boolean(entropyLabel || lsbLabel);
+
+  if (securityMeta) {
+    securityMeta.classList.toggle('hidden', !hasSecurityInfo);
+  }
+  if (entropyNode) {
+    entropyNode.textContent = entropyLabel || '';
+    entropyNode.classList.toggle('metric-alert', Number(fileMessage.entropy) > 8.2);
+  }
+  if (lsbNode) {
+    lsbNode.textContent = lsbLabel || '';
+    lsbNode.classList.toggle('metric-alert', Boolean(fileMessage.lsb?.suspicious));
+  }
+
   const previewElements = ensureFilePreviewElements(template);
   const descriptor = getFilePreviewDescriptor(fileMessage);
   resetFilePreview(previewElements);
@@ -728,8 +748,16 @@ function renderSystemMessage(systemMessage) {
 function renderSecurityAlert(alert) {
   const template = systemTemplate.content.cloneNode(true);
   const text = template.querySelector('.message-text');
-  const details = alert?.entropy ? ` (entropía: ${alert.entropy.toFixed(2)})` : '';
-  text.textContent = `Alerta de seguridad: ${alert?.message || 'Actividad sospechosa detectada'}${details}`;
+  const entropyDetails = formatEntropyLabel(alert?.entropy);
+  const lsbDetails = formatLsbLabel(alert?.lsb);
+  const combinedDetails = [entropyDetails, lsbDetails].filter(Boolean).join(' · ');
+  const suffix = combinedDetails ? ` (${combinedDetails})` : '';
+  const extraHint = alert?.lsb?.suspicious
+    ? ' Posible ocultamiento en los píxeles de la imagen.'
+    : '';
+  text.textContent = `Alerta de seguridad: ${
+    alert?.message || 'Actividad sospechosa detectada'
+  }${suffix}${extraHint}`;
   messagesContainer.appendChild(template);
   scrollMessagesToBottom();
   showToast(alert?.message || 'Se detectó actividad sospechosa.');
@@ -756,7 +784,12 @@ function addRecentFile(fileMessage) {
     link.rel = 'noopener noreferrer';
 
     const meta = document.createElement('span');
-    meta.textContent = humanFileSize(file.size);
+    const metaDetails = [humanFileSize(file.size)];
+    const entropyDetail = formatEntropyLabel(file.entropy);
+    const lsbDetail = formatLsbLabel(file.lsb);
+    if (entropyDetail) metaDetails.push(entropyDetail);
+    if (lsbDetail) metaDetails.push(lsbDetail);
+    meta.textContent = metaDetails.join(' · ');
     meta.classList.add('user-mail');
 
     li.appendChild(link);
@@ -780,6 +813,23 @@ function humanFileSize(size) {
   const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
   const value = size / Math.pow(1024, exponent);
   return `${value.toFixed(value < 10 && exponent > 0 ? 1 : 0)} ${units[exponent]}`;
+}
+
+function formatEntropyLabel(entropy) {
+  const value = Number(entropy);
+  if (!Number.isFinite(value)) {
+    return '';
+  }
+  return `Entropía ${value.toFixed(2)} bits`;
+}
+
+function formatLsbLabel(lsb) {
+  if (!lsb || typeof lsb.ratio !== 'number' || Number.isNaN(lsb.ratio)) {
+    return '';
+  }
+  const percentage = (lsb.ratio * 100).toFixed(1);
+  const base = `LSB ${percentage}%`;
+  return lsb.suspicious ? `${base} ⚠️` : base;
 }
 
 function scrollMessagesToBottom() {
