@@ -37,60 +37,7 @@ ViroChat es un chat en tiempo real cifrado de extremo a extremo con análisis av
 **Diagrama de Secuencia:**
 
 ![Diagrama](diagramaflujo.png) 
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                                                                              │
-│  INICIO                                                                      │
-│    │                                                                         │
-│    ├─→ Cliente envía solicitud de autenticación al Servidor                 │
-│    │   (Usuario + Contraseña + Token TOTP)                                  │
-│    │                                                                         │
-│    ├─→ Servidor valida con Seguridad                                        │
-│    │   • PBKDF2-SHA256 (120k iteraciones)                                   │
-│    │   • TOTP verificación (±30 segundos)                                   │
-│    │   • Timing-safe comparison                                             │
-│    │                                                                         │
-│    ├─→ ¿Autenticación exitosa?                                             │
-│    │    ├─ SÍ → Seguridad devuelve JWT token al Cliente                    │
-│    │    │        │                                                          │
-│    │    │        └─→ Cliente solicita unirse a sala con PIN                 │
-│    │    │             │                                                      │
-│    │    │             ├─→ Servidor valida con Base de Datos                 │
-│    │    │             │   • PIN PBKDF2-SHA256                               │
-│    │    │             │   • Fingerprint dispositivo (IP+UA)                 │
-│    │    │             │                                                      │
-│    │    │             ├─→ ¿Sala válida?                                    │
-│    │    │             │    ├─ SÍ → Servidor confirma unión a la sala       │
-│    │    │             │    │        │                                       │
-│    │    │             │    │        ├─→ Client envía mensaje al Server      │
-│    │    │             │    │        │   • Cifra AES-256-GCM                 │
-│    │    │             │    │        │   • IV aleatorio 12 bytes             │
-│    │    │             │    │        │                                       │
-│    │    │             │    │        └─→ Servidor encripta mensaje           │
-│    │    │             │    │             • Valida authTag                   │
-│    │    │             │    │             • Almacena en auditoría            │
-│    │    │             │    │             • Distribuye a sala                │
-│    │    │             │    │                │                              │
-│    │    │             │    │                └─→ Cliente recibe y muestra    │
-│    │    │             │    │                     • Descifra AES-256-GCM     │
-│    │    │             │    │                     • Verifica authTag         │
-│    │    │             │    │                     • Muestra mensaje          │
-│    │    │             │    │                                               │
-│    │    │             │    └─ NO → Sala inválida (Rechazo + Auditoría)     │
-│    │    │             │                                                     │
-│    │    │                 ANÁLISIS DE ESTEGANOGRAFÍA:                       │
-│    │    │                 ✓ Detección Magic Numbers                         │
-│    │    │                 ✓ Análisis de Entropía (Shannon)                  │
-│    │    │                 ✓ Escaneo Binwalk                                 │
-│    │    │                 ✓ Validación de bytes finales                     │
-│    │    │                                                                   │
-│    │    └─ NO → Autenticación fallida                                       │
-│    │             • Rate limiter incrementa contador                         │
-│    │             • Intento registrado en auditoría HMAC-SHA256              │
-│    │                                                                        │
-│    └─→ FIN                                                                 │
-│                                                                            │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+
 
 ### Detalles de Seguridad
 
