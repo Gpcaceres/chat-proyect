@@ -1,5 +1,7 @@
 import json
 import os
+import shutil
+import subprocess
 import sys
 from io import BytesIO
 
@@ -67,6 +69,77 @@ def detect_trailing_bytes(data):
             if len(data) > end_pos:
                 tail_bytes = max(tail_bytes, len(data) - end_pos)
     return tail_bytes
+
+
+def probe_steghide(target):
+    """Intenta detectar datos ocultos utilizando steghide.
+
+    Cuando el binario no está disponible simplemente marcamos la función
+    como no soportada y continuamos con el resto de heurísticas.
+    """
+
+    steghide_path = shutil.which('steghide')
+    if not steghide_path:
+        return {
+            'supported': False,
+            'available': False,
+            'suspicious': False,
+            'status': 'missing',
+        }
+
+    try:
+        result = subprocess.run(
+            [steghide_path, 'info', target, '-p', ''],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+        )
+    except Exception as exc:  # pragma: no cover - dependiente del sistema
+        return {
+            'supported': False,
+            'available': True,
+            'suspicious': False,
+            'status': 'error',
+            'error': str(exc),
+        }
+
+    combined_output = f"{result.stdout or ''}\n{result.stderr or ''}".strip()
+    normalized = combined_output.lower()
+
+    status = 'no_data'
+    suspicious = False
+    requires_password = False
+    hint = ''
+
+    if 'could not extract any data with that passphrase' in normalized:
+        status = 'password_required'
+        suspicious = True
+        requires_password = True
+        hint = 'Se detectó un contenedor que requiere contraseña para extraer.'
+    elif 'embedded data' in normalized and result.returncode == 0:
+        status = 'embedded_data'
+        suspicious = True
+        hint = 'steghide indicó la presencia de datos ocultos.'
+    elif 'encryption algorithm' in normalized or 'passphrase' in normalized:
+        status = 'possibly_encrypted'
+        suspicious = True
+        requires_password = 'passphrase' in normalized
+        hint = 'La salida de steghide sugiere cifrado o contraseña.'
+    elif result.returncode != 0:
+        status = 'error'
+
+    truncated_output = combined_output[:2000]
+
+    return {
+        'supported': True,
+        'available': True,
+        'suspicious': suspicious,
+        'requires_password': requires_password,
+        'status': status,
+        'hint': hint,
+        'output': truncated_output,
+    }
 
 
 def analyze_lsb_distribution(data):
@@ -147,10 +220,13 @@ def main():
     binwalk_result = analyze_with_binwalk(target)
     tail_bytes = detect_trailing_bytes(data)
     lsb_analysis = analyze_lsb_distribution(data)
+    stego_probe = probe_steghide(target)
+
     suspicious = (
         binwalk_result.get('suspicious', False)
         or tail_bytes > 512
         or lsb_analysis.get('suspicious', False)
+        or stego_probe.get('suspicious', False)
     )
 
     build_response(
@@ -159,6 +235,7 @@ def main():
         suspicious=suspicious,
         tail_bytes=tail_bytes,
         lsb_analysis=lsb_analysis,
+        steghide_probe=stego_probe,
     )
 
 

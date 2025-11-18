@@ -24,9 +24,17 @@ function runPythonScan(filePath) {
       tail_bytes: parsed.tail_bytes || 0,
       suspicious: Boolean(parsed.suspicious),
       lsb: parsed.lsb_analysis || null,
+      stegProbe: parsed.steghide_probe || null,
     };
   } catch (error) {
-    return { supported: false, findings: [], tail_bytes: 0, error: error.message, lsb: null };
+    return {
+      supported: false,
+      findings: [],
+      tail_bytes: 0,
+      error: error.message,
+      lsb: null,
+      stegProbe: null,
+    };
   }
 }
 
@@ -55,8 +63,17 @@ parentPort.on('message', (filePath) => {
     const scanResult = runPythonScan(filePath);
     const suspiciousEntropy = entropy > 8.2 && scanResult.tail_bytes > 0;
     const lsbSuspicious = Boolean(scanResult.lsb?.suspicious);
-    const suspicious = Boolean(scanResult.suspicious || suspiciousEntropy || lsbSuspicious);
-    parentPort.postMessage({ entropy, suspicious, binwalk: scanResult, lsb: scanResult.lsb });
+    const stegSuspicious = Boolean(scanResult.stegProbe?.suspicious);
+    const suspicious = Boolean(
+      scanResult.suspicious || suspiciousEntropy || lsbSuspicious || stegSuspicious,
+    );
+    parentPort.postMessage({
+      entropy,
+      suspicious,
+      binwalk: scanResult,
+      lsb: scanResult.lsb,
+      stegProbe: scanResult.stegProbe,
+    });
   } catch (error) {
     parentPort.postMessage({ error: error.message, suspicious: true, entropy: 8 });
   }
