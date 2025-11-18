@@ -3,6 +3,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { parentPort } = require('worker_threads');
 
+const ENTROPY_SUSPICIOUS_THRESHOLD = 7.985;
+
 function runPythonScan(filePath) {
   try {
     const scriptPath = path.join(__dirname, 'binwalk_scan.py');
@@ -61,7 +63,8 @@ parentPort.on('message', (filePath) => {
     const buffer = fs.readFileSync(filePath);
     const entropy = calculateEntropy(buffer);
     const scanResult = runPythonScan(filePath);
-    const suspiciousEntropy = entropy > 8.2 && scanResult.tail_bytes > 0;
+    const suspiciousEntropy =
+      entropy >= ENTROPY_SUSPICIOUS_THRESHOLD && scanResult.tail_bytes > 0;
     const lsbSuspicious = Boolean(scanResult.lsb?.suspicious);
     const stegSuspicious = Boolean(scanResult.stegProbe?.suspicious);
     const suspicious = Boolean(

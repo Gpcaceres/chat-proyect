@@ -52,6 +52,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 const PREVIEWABLE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+const ENTROPY_ALERT_THRESHOLD = 7.985;
 const FILE_PREVIEW_GROUPS = [
   {
     key: 'pdf',
@@ -359,6 +360,7 @@ fileInput.addEventListener('change', async (event) => {
       mimetype: data.mimetype,
       entropy: data.entropy,
       lsb: data.lsb,
+      stegProbe: data.stegProbe,
     });
     showToast('Archivo compartido con éxito.');
   } catch (error) {
@@ -615,7 +617,11 @@ function renderFileMessage(fileMessage) {
   }
   if (entropyNode) {
     entropyNode.textContent = entropyLabel || '';
-    entropyNode.classList.toggle('metric-alert', Number(fileMessage.entropy) > 8.2);
+    const entropyValue = Number(fileMessage.entropy);
+    entropyNode.classList.toggle(
+      'metric-alert',
+      Number.isFinite(entropyValue) && entropyValue >= ENTROPY_ALERT_THRESHOLD,
+    );
   }
   if (lsbNode) {
     lsbNode.textContent = lsbLabel || '';
@@ -847,6 +853,12 @@ function formatLsbLabel(lsb) {
   }
   const percentage = (lsb.ratio * 100).toFixed(1);
   const base = `LSB ${percentage}%`;
+  const rgbChannels = Array.isArray(lsb.rgb_channels) ? lsb.rgb_channels : [];
+  const flaggedChannels = rgbChannels.filter((channel) => channel?.suspicious);
+  if (flaggedChannels.length > 0) {
+    const label = flaggedChannels.map((channel) => channel.channel).join('/');
+    return `${base} RGB(${label}) ⚠️`;
+  }
   return lsb.suspicious ? `${base} ⚠️` : base;
 }
 

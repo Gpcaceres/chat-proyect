@@ -148,6 +148,8 @@ def analyze_lsb_distribution(data):
     Si Pillow está disponible, se realiza sobre los pixeles reales. De lo contrario,
     se evalúa una muestra de bytes del archivo para detectar distribuciones que
     parezcan demasiado uniformes (indicativo de esteganografía LSB).
+    También se inspeccionan individualmente los canales RGB para detectar
+    esteganografía que únicamente altere un canal de color.
     """
 
     def _lsb_suspicion(ones, total_bits, threshold=0.02):
@@ -169,18 +171,43 @@ def analyze_lsb_distribution(data):
                 sample_step = max(1, total_pixels // 400000)
                 ones = 0
                 total_bits = 0
+                channel_ones = {'r': 0, 'g': 0, 'b': 0}
+                channel_bits = {'r': 0, 'g': 0, 'b': 0}
                 for index, (r, g, b) in enumerate(img.getdata()):
                     if index % sample_step != 0:
                         continue
                     ones += (r & 1) + (g & 1) + (b & 1)
                     total_bits += 3
+                    channel_ones['r'] += r & 1
+                    channel_ones['g'] += g & 1
+                    channel_ones['b'] += b & 1
+                    channel_bits['r'] += 1
+                    channel_bits['g'] += 1
+                    channel_bits['b'] += 1
                 ratio = (ones / total_bits) if total_bits else 0
+                channel_stats = []
+                rgb_alert = False
+                for key, label in (('r', 'R'), ('g', 'G'), ('b', 'B')):
+                    bits = channel_bits[key]
+                    channel_ratio = (channel_ones[key] / bits) if bits else 0
+                    channel_suspicious = bits >= 1500 and abs(channel_ratio - 0.5) < 0.018
+                    rgb_alert = rgb_alert or channel_suspicious
+                    channel_stats.append(
+                        {
+                            'channel': label,
+                            'ratio': channel_ratio,
+                            'bits': bits,
+                            'suspicious': channel_suspicious,
+                        }
+                    )
                 return {
                     'supported': True,
-                    'method': 'pillow',
+                    'method': 'pillow_rgb',
                     'ratio': ratio,
                     'pixels_sampled': total_bits // 3,
-                    'suspicious': _lsb_suspicion(ones, total_bits),
+                    'rgb_channels': channel_stats,
+                    'rgb_conversion': True,
+                    'suspicious': _lsb_suspicion(ones, total_bits) or rgb_alert,
                     'width': width,
                     'height': height,
                 }
@@ -200,6 +227,7 @@ def analyze_lsb_distribution(data):
         'method': 'byte_stream',
         'ratio': ratio,
         'bytes_sampled': total_bits,
+        'rgb_conversion': False,
         'suspicious': _lsb_suspicion(ones, total_bits, threshold=0.015),
     }
 

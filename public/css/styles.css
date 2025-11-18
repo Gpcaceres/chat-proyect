@@ -766,6 +766,10 @@ a {
   gap: 0.2rem;
 }
 
+.file-security span:empty {
+  display: none;
+}
+
 .file-security .metric-alert {
   color: var(--accent-strong);
   font-weight: 600;
