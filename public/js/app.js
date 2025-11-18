@@ -570,14 +570,17 @@ function renderFileMessage(fileMessage) {
     .querySelector('.message-author')
     .textContent = formatAlias(fileMessage.senderDisplayName, fileMessage.sender);
   template.querySelector('.message-time').textContent = formatTime(fileMessage.timestamp);
+
   const link = template.querySelector('.file-link');
   link.href = fileMessage.url;
   link.setAttribute('download', fileMessage.name || fileMessage.filename);
   template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
   template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
+
   const previewElements = ensureFilePreviewElements(template);
   const descriptor = getFilePreviewDescriptor(fileMessage);
   resetFilePreview(previewElements);
+
   if (descriptor?.mode === 'image' && previewElements.previewWrapper && previewElements.previewImage) {
     previewElements.previewImage.src = fileMessage.url;
     previewElements.previewImage.alt = `Vista previa de ${fileMessage.name || fileMessage.filename}`;
@@ -599,6 +602,7 @@ function renderFileMessage(fileMessage) {
     previewElements.previewWrapper.classList.add('as-meta');
     previewElements.previewWrapper.classList.remove('hidden');
   }
+
   messagesContainer.appendChild(template);
   addRecentFile(fileMessage);
   scrollMessagesToBottom();
@@ -616,49 +620,63 @@ function ensureFilePreviewElements(fragment) {
   if (!previewWrapper) {
     previewWrapper = document.createElement('div');
     previewWrapper.className = 'file-preview hidden';
+
     const previewImage = document.createElement('img');
     previewImage.className = 'file-preview-image';
     previewImage.alt = 'Vista previa del archivo compartido';
     previewImage.loading = 'lazy';
+
     const previewMeta = document.createElement('div');
     previewMeta.className = 'file-preview-meta hidden';
+
     const previewIcon = document.createElement('div');
     previewIcon.className = 'file-preview-icon';
     previewIcon.setAttribute('aria-hidden', 'true');
+
     const previewTexts = document.createElement('div');
     previewTexts.className = 'file-preview-texts';
+
     const previewType = document.createElement('span');
     previewType.className = 'file-preview-type';
+
     const previewHint = document.createElement('span');
     previewHint.className = 'file-preview-hint';
+
     previewTexts.appendChild(previewType);
     previewTexts.appendChild(previewHint);
     previewMeta.appendChild(previewIcon);
     previewMeta.appendChild(previewTexts);
+
     previewWrapper.appendChild(previewImage);
     previewWrapper.appendChild(previewMeta);
     messageRoot.appendChild(previewWrapper);
   }
+
   const previewImage = previewWrapper.querySelector('.file-preview-image');
   const previewMeta = previewWrapper.querySelector('.file-preview-meta');
   const previewIcon = previewWrapper.querySelector('.file-preview-icon');
   const previewType = previewWrapper.querySelector('.file-preview-type');
   const previewHint = previewWrapper.querySelector('.file-preview-hint');
+
   return { previewWrapper, previewImage, previewMeta, previewIcon, previewType, previewHint };
 }
 
 function resetFilePreview(elements = {}) {
   const { previewWrapper, previewImage, previewMeta, previewType, previewHint } = elements;
+
   previewWrapper?.classList.add('hidden');
   previewWrapper?.classList.remove('as-image', 'as-meta');
+
   if (previewImage) {
     previewImage.src = '';
     previewImage.alt = 'Vista previa del archivo compartido';
   }
+
   if (previewMeta) {
     previewMeta.classList.add('hidden');
     PREVIEW_ACCENT_CLASSES.forEach((cls) => previewMeta.classList.remove(cls));
   }
+
   if (previewType) {
     previewType.textContent = '';
   }
@@ -713,9 +731,11 @@ function addRecentFile(fileMessage) {
     link.setAttribute('download', file.name || file.filename);
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
+
     const meta = document.createElement('span');
     meta.textContent = humanFileSize(file.size);
     meta.classList.add('user-mail');
+
     li.appendChild(link);
     li.appendChild(meta);
     recentFilesList.appendChild(li);
@@ -808,6 +828,7 @@ function getFilePreviewDescriptor(fileMessage) {
   if (shouldDisplayThumbnail(fileMessage)) {
     return { mode: 'image' };
   }
+
   const group = FILE_PREVIEW_GROUPS.find((item) => matchesPreviewGroup(fileMessage, item));
   if (group) {
     return {
@@ -818,6 +839,8 @@ function getFilePreviewDescriptor(fileMessage) {
       hint: formatPreviewHint(fileMessage, group),
     };
   }
+
+  // Fallback genérico si no coincide con ningún grupo
   return {
     mode: 'meta',
     label: 'Archivo compartido',

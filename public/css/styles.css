@@ -128,8 +128,13 @@ a {
   padding: 0.85rem 2.75rem;
   font-size: 0.95rem;
   cursor: pointer;
+  display: inline-block;   /* Asegura que respete ancho y alto */
+  min-width: 180px;        /* Mismo ancho mínimo para todos los botones */
+  text-align: center;      /* Centra el texto */
+  box-sizing: border-box;  /* Incluye padding/borde en el cálculo del ancho */
   transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease;
 }
+
 
 .btn.primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
