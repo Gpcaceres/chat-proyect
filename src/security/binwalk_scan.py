@@ -221,6 +221,7 @@ def main():
     tail_bytes = detect_trailing_bytes(data)
     lsb_analysis = analyze_lsb_distribution(data)
     stego_probe = probe_steghide(target)
+
     suspicious = (
         binwalk_result.get('suspicious', False)
         or tail_bytes > 512

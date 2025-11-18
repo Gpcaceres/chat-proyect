@@ -359,7 +359,6 @@ fileInput.addEventListener('change', async (event) => {
       mimetype: data.mimetype,
       entropy: data.entropy,
       lsb: data.lsb,
-      stegProbe: data.stegProbe,
     });
     showToast('Archivo compartido con éxito.');
   } catch (error) {
