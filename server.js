@@ -1,11 +1,17 @@
+// ==================== IMPORTACIONES ====================
+// Módulos estándar de Node.js
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const crypto = require('crypto');
-const express = require('express');
-const mongoose = require('mongoose');
-const multer = require('multer');
-const { Server } = require('socket.io');
+
+// Marcos de trabajo y librerías
+const express = require('express'); // Framework web
+const mongoose = require('mongoose'); // ODM para MongoDB
+const multer = require('multer'); // Middleware para carga de archivos
+const { Server } = require('socket.io'); // Comunicación en tiempo real
+
+// Cargar variables de entorno
 require('dotenv').config();
 
 const Attendance = require('./src/models/Attendance');
@@ -491,24 +497,69 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
     }
 
     const analysis = await analyzeFile(req.file.path);
+    
+    // LOG DETALLADO DE ANÁLISIS
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`📁 ANÁLISIS DE SEGURIDAD: ${req.file.originalname}`);
+    console.log(`${'='.repeat(70)}`);
+    console.log(`   Tamaño: ${(req.file.size / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`   Tipo MIME: ${req.file.mimetype}`);
+    console.log(`   Entropía: ${analysis.entropy?.toFixed(2) || 'N/A'}`);
+    console.log(`\n   🔍 DETECCIÓN ESTEGANOGRAFÍA:`);
+    console.log(`   - ¿Patrón detectado?: ${analysis.hasSteg ? '⚠️ SÍ' : '✅ NO'}`);
+    console.log(`   - Score patrón: ${analysis.stegAnalysis?.stegScore?.toFixed(2) || 'N/A'}`);
+    console.log(`   - Patrones encontrados: ${analysis.stegAnalysis?.patterns?.join(', ') || 'Ninguno'}`);
+    
+    if (analysis.hasSteg) {
+      console.log(`\n   🔍 VERIFICACIONES ADICIONALES (porque hay patrón):`);
+      console.log(`   - Python sospechoso: ${analysis.detectionReasons?.pythonSuspicious ? '⚠️ SÍ' : '❌ NO'}`);
+      console.log(`   - Binwalk findings: ${analysis.detectionReasons?.hasBinwalkFindings ? '⚠️ SÍ' : '❌ NO'}`);
+      console.log(`   - Tail bytes sospechosos: ${analysis.detectionReasons?.tailBytesSuspicious ? '⚠️ SÍ' : '❌ NO'}`);
+      console.log(`   - Distribución anómala: ${analysis.detectionReasons?.distributionAnomaly ? '⚠️ SÍ' : '❌ NO'}`);
+      console.log(`   - Tail bytes encontrados: ${analysis.binwalk?.tail_bytes || 0}`);
+      console.log(`   - Anomalías: ${analysis.detectionReasons?.anomalies?.join(', ') || 'Ninguna'}`);
+      console.log(`   - Findings binwalk: ${analysis.detectionReasons?.binwalkFindings?.map((f) => f.description).join(', ') || 'Ninguno'}`);
+    }
+    
+    console.log(`\n   ✅ RESULTADO FINAL: ${analysis.suspicious ? '❌ RECHAZADO' : '✅ ACEPTADO'}`);
+    console.log(`   Razones: ${JSON.stringify(analysis.detectionReasons)}`);
+    console.log(`${'='.repeat(70)}\n`);
+    
     if (analysis.suspicious) {
       fs.unlinkSync(req.file.path);
       await audit('file_rejected', req.session.displayName, {
         roomId,
+        reason: analysis.hasSteg ? 'Esteganografía detectada' : 'Contenido sospechoso',
         entropy: analysis.entropy,
+        compressionScore: analysis.compressionScore,
         findings: analysis.binwalk?.findings || [],
+        anomalies: analysis.binwalk?.anomalies || [],
         tailBytes: analysis.binwalk?.tail_bytes || 0,
+        detectionReasons: analysis.detectionReasons,
+        hasSteg: analysis.hasSteg,
       });
       io.to(roomId).emit('security_alert', {
-        level: 'warning',
-        message: 'Archivo rechazado por posible esteganografía.',
-        entropy: analysis.entropy,
-        findings: analysis.binwalk?.findings || [],
+        level: 'danger',
+        message: analysis.hasSteg 
+          ? '🚨 ARCHIVO RECHAZADO: Se detectó esteganografía con DATOS OCULTOS'
+          : '🚨 ARCHIVO RECHAZADO: Contenido sospechoso detectado',
+        details: {
+          entropy: analysis.entropy.toFixed(2),
+          hasSteg: analysis.hasSteg,
+          stegScore: analysis.stegAnalysis?.stegScore?.toFixed(2),
+          stegPatterns: analysis.stegAnalysis?.patterns || [],
+          findings: analysis.binwalk?.findings || [],
+          anomalies: analysis.binwalk?.anomalies || [],
+          tailBytes: analysis.binwalk?.tail_bytes || 0,
+        },
         timestamp: new Date().toISOString(),
       });
-      return res
-        .status(400)
-        .json({ message: 'Archivo rechazado por posible esteganografía.' });
+      return res.status(400).json({ 
+        message: analysis.hasSteg 
+          ? 'RECHAZADO: Se detectó esteganografía con datos ocultos'
+          : 'RECHAZADO: Contenido sospechoso detectado',
+        details: analysis.detectionReasons
+      });
     }
 
     await audit('file_uploaded', req.session.displayName, {
@@ -516,7 +567,11 @@ app.post('/api/rooms/:roomId/upload', authenticateUser, upload.single('file'), a
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
+      hasSteg: analysis.hasSteg,
+      entropy: analysis.entropy,
     });
+
+    console.log(`   ✅ ARCHIVO ACEPTADO Y GUARDADO: ${req.file.filename}\n`);
 
     return res.status(201).json({
       originalName: req.file.originalname,
