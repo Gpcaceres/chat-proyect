@@ -47,7 +47,15 @@
           </label>
           <label class="form-field">
             <span>Nickname</span>
-            <input type="text" id="nickname" name="nickname" placeholder="Tu alias" minlength="3" maxlength="32" required />
+            <input
+              type="text"
+              id="nickname"
+              name="nickname"
+              placeholder="Tu alias"
+              minlength="3"
+              maxlength="32"
+              required
+            />
           </label>
           <button type="submit" class="btn primary block">Unirme a la sala</button>
         </form>
@@ -204,7 +212,18 @@
           </div>
         </a>
         <div class="file-preview hidden">
-          <img alt="Vista previa del archivo compartido" loading="lazy" />
+          <img
+            class="file-preview-image"
+            alt="Vista previa del archivo compartido"
+            loading="lazy"
+          />
+          <div class="file-preview-meta hidden">
+            <div class="file-preview-icon" aria-hidden="true">📎</div>
+            <div class="file-preview-texts">
+              <span class="file-preview-type"></span>
+              <span class="file-preview-hint"></span>
+            </div>
+          </div>
         </div>
       </article>
     </template>
