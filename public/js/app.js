@@ -570,11 +570,13 @@ function renderFileMessage(fileMessage) {
     .querySelector('.message-author')
     .textContent = formatAlias(fileMessage.senderDisplayName, fileMessage.sender);
   template.querySelector('.message-time').textContent = formatTime(fileMessage.timestamp);
+
   const link = template.querySelector('.file-link');
   link.href = fileMessage.url;
   link.setAttribute('download', fileMessage.name || fileMessage.filename);
   template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
   template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
+
   const previewWrapper = template.querySelector('.file-preview');
   const previewImage = previewWrapper?.querySelector('.file-preview-image');
   const previewMeta = previewWrapper?.querySelector('.file-preview-meta');
@@ -582,14 +584,20 @@ function renderFileMessage(fileMessage) {
   const previewType = previewWrapper?.querySelector('.file-preview-type');
   const previewHint = previewWrapper?.querySelector('.file-preview-hint');
   const descriptor = getFilePreviewDescriptor(fileMessage);
-  previewWrapper?.classList.add('hidden');
-  previewWrapper?.classList.remove('as-image', 'as-meta');
-  previewImage?.setAttribute('src', '');
-  previewImage?.setAttribute('alt', '');
+
+  if (previewWrapper) {
+    previewWrapper.classList.add('hidden');
+    previewWrapper.classList.remove('as-image', 'as-meta');
+  }
+  if (previewImage) {
+    previewImage.setAttribute('src', '');
+    previewImage.setAttribute('alt', '');
+  }
   if (previewMeta) {
     previewMeta.classList.add('hidden');
     PREVIEW_ACCENT_CLASSES.forEach((cls) => previewMeta.classList.remove(cls));
   }
+
   if (descriptor?.mode === 'image' && previewWrapper && previewImage) {
     previewImage.src = fileMessage.url;
     previewImage.alt = `Vista previa de ${fileMessage.name || fileMessage.filename}`;
@@ -613,6 +621,7 @@ function renderFileMessage(fileMessage) {
   } else if (previewWrapper) {
     previewWrapper.remove();
   }
+
   messagesContainer.appendChild(template);
   addRecentFile(fileMessage);
   scrollMessagesToBottom();
