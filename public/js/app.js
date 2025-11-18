@@ -166,7 +166,8 @@ closeAdminBtn?.addEventListener('click', () => {
   adminModal?.classList.add('hidden');
 });
 
-backButton.addEventListener('click', () => {
+backButton.addEventListener('click', async () => {
+  await terminateSession({ reason: 'manual_exit' });
   resetState();
   window.location.reload();
 });
@@ -175,6 +176,7 @@ window.addEventListener('beforeunload', () => {
   if (socket) {
     socket.disconnect();
   }
+  terminateSession({ reason: 'window_unload', keepalive: true });
 });
 
 loginForm.addEventListener('submit', async (event) => {
@@ -386,6 +388,27 @@ async function initializeSession(payload) {
   configureFileUpload(activeRoom.type === 'multimedia');
 
   initializeSocket();
+}
+
+async function terminateSession(options = {}) {
+  if (!session || !activeRoom) return;
+  const reason = options.reason || 'manual_exit';
+
+  try {
+    await fetch(`/api/rooms/${encodeURIComponent(activeRoom.id)}/leave`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason }),
+      keepalive: Boolean(options.keepalive),
+    });
+  } catch (error) {
+    if (!options.keepalive) {
+      console.error('No se pudo terminar la sesión', error);
+    }
+  }
 }
 
 function resetState() {

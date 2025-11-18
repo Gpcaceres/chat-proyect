@@ -414,6 +414,35 @@ app.post('/api/rooms/access', async (req, res) => {
   }
 });
 
+app.post('/api/rooms/:roomId/leave', authenticateUser, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { roomId: sessionRoomId, sub, displayName, nicknameHash } = req.session;
+    if (roomId !== sessionRoomId) {
+      return res.status(403).json({ message: 'No autorizado para esta sala.' });
+    }
+
+    const roomSessions = sessionRegistry.get(roomId);
+    const hadSession = Boolean(roomSessions?.has(sub));
+    unregisterSession(roomId, sub);
+
+    if (hadSession) {
+      const rawReason = typeof req.body?.reason === 'string' ? req.body.reason : 'manual_exit';
+      const reason = rawReason.substring(0, 120) || 'manual_exit';
+      await audit('room_session_terminated', displayName || nicknameHash, {
+        roomId,
+        sessionId: sub,
+        reason,
+      });
+    }
+
+    return res.json({ released: hadSession });
+  } catch (error) {
+    console.error('Error al finalizar sesión de sala:', error);
+    return res.status(500).json({ message: 'No se pudo finalizar la sesión.' });
+  }
+});
+
 app.post('/api/login', async (req, res) => {
   try {
     const { name, email } = req.body;
