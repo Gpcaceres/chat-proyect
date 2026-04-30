@@ -44,6 +44,7 @@ const CRYPTO_SECRET =
 const AUDIT_SECRET = process.env.AUDIT_SECRET || CRYPTO_SECRET;
 
 const app = express();
+app.set("trust proxy", true);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -218,12 +219,22 @@ async function authenticateUser(req, res, next) {
   }
 }
 
-function registerSession(roomId, nickname, nicknameHash, fingerprint) {
+function normalizeIp(raw) {
+  if (!raw) return "desconocida";
+  const mapped = raw.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return mapped[1];
+  if (raw === "::1") return "127.0.0.1";
+  return raw;
+}
+
+function registerSession(roomId, nickname, nicknameHash, fingerprint, ip) {
   if (!sessionRegistry.has(roomId)) {
     sessionRegistry.set(roomId, new Map());
   }
   const roomSessions = sessionRegistry.get(roomId);
   const normalized = nickname.toLowerCase();
+  const clientIp = normalizeIp(ip);
+
   for (const [sessionId, session] of roomSessions.entries()) {
     if (session.fingerprint === fingerprint) {
       roomSessions.delete(sessionId);
@@ -231,7 +242,15 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint) {
   }
   for (const session of roomSessions.values()) {
     if (session.nicknameNormalized === normalized) {
-      throw new Error("El nickname ya está en uso en la sala.");
+      if (session.socketId) {
+        io.to(session.socketId).emit("device_conflict", {
+          ip: clientIp,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      throw new Error(
+        "El nickname ya está en uso en la sala desde otro dispositivo.",
+      );
     }
   }
 
@@ -248,6 +267,8 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint) {
     displayName: nickname,
     nicknameNormalized: normalized,
     fingerprint,
+    socketId: null,
+    ip: clientIp,
     connectedAt: new Date().toISOString(),
   });
   deviceRegistry.set(fingerprint, roomId);
@@ -279,6 +300,7 @@ function getRoomUsers(roomId) {
     nicknameHash: value.nicknameHash,
     displayName: value.displayName,
     connectedAt: value.connectedAt,
+    ip: value.ip,
   }));
 }
 
@@ -432,11 +454,16 @@ app.post("/api/rooms/access", async (req, res) => {
       .digest("base64");
     let sessionId;
     try {
+      const rawIp =
+        req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
+        req.ip ||
+        req.socket?.remoteAddress;
       sessionId = registerSession(
         room.roomId,
         sanitizedNickname,
         nicknameHash,
         fingerprint,
+        rawIp,
       );
     } catch (error) {
       return res.status(400).json({ message: error.message });

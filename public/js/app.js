@@ -619,6 +619,18 @@ async function initializeSocket() {
     renderSecurityAlert(alert);
   });
 
+  socket.on("device_conflict", ({ ip, timestamp }) => {
+    const from = ip ? ` desde ${ip}` : "";
+    showConflictToast(
+      `⚠️ Alguien intentó iniciar sesión con tu identidad${from}. Si no fuiste tú, cierra y vuelve a entrar.`,
+    );
+    renderSystemMessage({
+      type: "device_conflict",
+      message: `Intento de acceso con tu identidad detectado${from}.`,
+      timestamp: timestamp || new Date().toISOString(),
+    });
+  });
+
   socket.on("pong_check", ({ t }) => {
     updateLatencyDisplay(Date.now() - t);
   });
@@ -659,6 +671,12 @@ function renderUserList(users) {
       );
       meta.classList.add("user-mail");
       li.appendChild(meta);
+    }
+    if (user.ip) {
+      const ipBadge = document.createElement("span");
+      ipBadge.textContent = `IP: ${user.ip}`;
+      ipBadge.classList.add("user-ip");
+      li.appendChild(ipBadge);
     }
     usersList.appendChild(li);
   });
@@ -1027,6 +1045,23 @@ function showToast(message) {
       toast.remove();
     });
   }, 3200);
+}
+
+function showConflictToast(message) {
+  if (!message) return;
+  const toast = document.createElement("div");
+  toast.className = "toast toast-conflict";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.classList.add("visible");
+  });
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    toast.addEventListener("transitionend", () => {
+      toast.remove();
+    });
+  }, 8000);
 }
 
 function formatHash(hash) {
