@@ -143,6 +143,41 @@
         </form>
         <p id="upload-hint" class="upload-hint hidden" aria-live="polite"></p>
       </main>
+
+      <aside id="sidebar-right" class="sidebar-right glass">
+        <section class="sidebar-section">
+          <div class="status-indicator">
+            <span id="latency-dot" class="status-dot latency-dot"></span>
+            <span>Latencia de red</span>
+          </div>
+          <div class="latency-widget">
+            <div class="latency-bar-track">
+              <div id="latency-bar" class="latency-bar"></div>
+            </div>
+            <div class="latency-row">
+              <span id="latency-ms" class="latency-ms">-- ms</span>
+              <span id="latency-label" class="latency-label-text"
+                >Sin datos</span
+              >
+            </div>
+          </div>
+        </section>
+
+        <section class="sidebar-section">
+          <div class="status-indicator">
+            <span class="reject-icon" aria-hidden="true">🚫</span>
+            <span>Archivos rechazados</span>
+          </div>
+          <ul
+            id="rejected-files-list"
+            class="rejected-list"
+            aria-live="polite"
+          ></ul>
+          <p id="rejected-empty" class="rejected-empty">
+            Sin rechazos recientes
+          </p>
+        </section>
+      </aside>
     </div>
 
     <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true">

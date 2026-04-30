@@ -47,6 +47,7 @@ let session = null;
 let activeRoom = null;
 const recentFiles = [];
 let adminToken = null;
+let pingInterval = null;
 
 // Unique ID per browser tab — persists across reloads of the same tab but
 // differs between tabs/windows, so multiple users on the same machine don't
@@ -373,16 +374,18 @@ fileInput.addEventListener("change", async (event) => {
     "application/zip",
   ];
   if (!ALLOWED_CLIENT_TYPES.includes(file.type)) {
-    showToast(
-      `Tipo de archivo no permitido (${file.type || "desconocido"}). Solo se aceptan: imágenes JPEG, PNG, GIF · PDF · texto plano · ZIP.`,
-    );
+    const msg = `Tipo de archivo no permitido (${file.type || "desconocido"}). Solo se aceptan: imágenes JPEG, PNG, GIF · PDF · texto plano · ZIP.`;
+    addRejectedFile(file.name, msg);
+    showToast(msg);
     fileInput.value = "";
     return;
   }
 
   // Validación client-side: tamaño máximo 15 MB
   if (file.size > 15 * 1024 * 1024) {
-    showToast("El archivo excede el tamaño máximo permitido de 15 MB.");
+    const msg = "El archivo excede el tamaño máximo permitido de 15 MB.";
+    addRejectedFile(file.name, msg);
+    showToast(msg);
     fileInput.value = "";
     return;
   }
@@ -419,6 +422,7 @@ fileInput.addEventListener("change", async (event) => {
     });
     showToast("Archivo compartido con éxito.");
   } catch (error) {
+    addRejectedFile(file.name, error.message);
     showToast(error.message || "No se pudo compartir el archivo.");
   } finally {
     updateSecurityIndicator("secure", "Cifrado activo");
@@ -476,6 +480,8 @@ function resetState() {
   session = null;
   activeRoom = null;
   cryptoKey = null;
+  stopLatencyMonitor();
+  resetLatencyDisplay();
   if (socket) {
     socket.disconnect();
     socket = null;
@@ -561,6 +567,7 @@ async function initializeSocket() {
 
   socket.on("connect", () => {
     updateSecurityIndicator("secure", "Cifrado activo");
+    startLatencyMonitor();
   });
 
   socket.on("connect_error", (error) => {
@@ -570,6 +577,8 @@ async function initializeSocket() {
 
   socket.on("disconnect", () => {
     updateSecurityIndicator("warning", "Sin conexión");
+    stopLatencyMonitor();
+    resetLatencyDisplay();
   });
 
   socket.on("user_list", (users) => {
@@ -608,6 +617,10 @@ async function initializeSocket() {
   socket.on("security_alert", (alert) => {
     updateSecurityIndicator("warning", "Alerta de seguridad");
     renderSecurityAlert(alert);
+  });
+
+  socket.on("pong_check", ({ t }) => {
+    updateLatencyDisplay(Date.now() - t);
   });
 }
 
@@ -1170,6 +1183,136 @@ function updateSecurityIndicator(state, message) {
   } else {
     dot.classList.add("warning");
   }
+}
+
+function startLatencyMonitor() {
+  stopLatencyMonitor();
+  pingInterval = setInterval(() => {
+    if (socket && socket.connected) {
+      socket.emit("ping_check", { t: Date.now() });
+    }
+  }, 3000);
+}
+
+function stopLatencyMonitor() {
+  if (pingInterval) {
+    clearInterval(pingInterval);
+    pingInterval = null;
+  }
+}
+
+function updateLatencyDisplay(ms) {
+  const bar = document.getElementById("latency-bar");
+  const msLabel = document.getElementById("latency-ms");
+  const statusLabel = document.getElementById("latency-label");
+  const dot = document.getElementById("latency-dot");
+  if (!bar || !msLabel || !statusLabel || !dot) return;
+
+  msLabel.textContent = `${ms} ms`;
+
+  const fillPct = Math.min((ms / 600) * 100, 100);
+  bar.style.width = `${fillPct}%`;
+
+  let tier;
+  let tierLabel;
+  if (ms <= 80) {
+    tier = "good";
+    tierLabel = "Excelente";
+  } else if (ms <= 200) {
+    tier = "moderate";
+    tierLabel = "Normal";
+  } else if (ms <= 500) {
+    tier = "high";
+    tierLabel = "Elevada";
+  } else {
+    tier = "critical";
+    tierLabel = "Crítica";
+  }
+
+  bar.className = `latency-bar ${tier}`;
+  dot.className = `status-dot latency-dot ${tier}`;
+  statusLabel.textContent = tierLabel;
+}
+
+function resetLatencyDisplay() {
+  const bar = document.getElementById("latency-bar");
+  const msLabel = document.getElementById("latency-ms");
+  const statusLabel = document.getElementById("latency-label");
+  const dot = document.getElementById("latency-dot");
+  if (!bar || !msLabel || !statusLabel || !dot) return;
+
+  bar.style.width = "0%";
+  bar.className = "latency-bar";
+  dot.className = "status-dot latency-dot";
+  msLabel.textContent = "-- ms";
+  statusLabel.textContent = "Sin datos";
+}
+
+function addRejectedFile(filename, reason) {
+  const list = document.getElementById("rejected-files-list");
+  const emptyMsg = document.getElementById("rejected-empty");
+  if (!list) return;
+
+  if (emptyMsg) emptyMsg.classList.add("hidden");
+
+  while (list.children.length >= 8) {
+    list.removeChild(list.lastChild);
+  }
+
+  const li = document.createElement("li");
+
+  const nameEl = document.createElement("span");
+  nameEl.className = "rejected-filename";
+  nameEl.textContent = `🚫 ${filename || "Archivo desconocido"}`;
+
+  const reasonEl = document.createElement("span");
+  reasonEl.className = "rejected-reason";
+  reasonEl.textContent = classifyRejectionReason(reason);
+
+  const timeEl = document.createElement("span");
+  timeEl.className = "rejected-time";
+  timeEl.textContent = new Date().toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  li.appendChild(nameEl);
+  li.appendChild(reasonEl);
+  li.appendChild(timeEl);
+  list.prepend(li);
+}
+
+function classifyRejectionReason(message) {
+  const msg = (message || "").toLowerCase();
+  if (
+    msg.includes("esteganograf") ||
+    msg.includes("datos ocultos") ||
+    msg.includes("información oculta")
+  ) {
+    return "Esteganografía detectada";
+  }
+  if (
+    msg.includes("patrones sospechosos") ||
+    msg.includes("contenido sospechoso")
+  ) {
+    return "Contenido sospechoso";
+  }
+  if (
+    msg.includes("firma") ||
+    msg.includes("falsificado") ||
+    msg.includes("no coincide")
+  ) {
+    return "Firma de archivo falsificada";
+  }
+  if (msg.includes("tipo") && msg.includes("no está permitido")) {
+    return "Tipo de archivo no permitido";
+  }
+  if (msg.includes("excede") || msg.includes("tamaño")) {
+    return "Archivo demasiado grande";
+  }
+  return message
+    ? message.slice(0, 64) + (message.length > 64 ? "…" : "")
+    : "Rechazo de seguridad";
 }
 
 async function importSessionKey(base64Key) {

@@ -872,6 +872,10 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("ping_check", ({ t }) => {
+    socket.emit("pong_check", { t });
+  });
+
   socket.on("disconnect", () => {
     clearTimeout(inactivityTimer);
     unregisterSession(roomId, sub);
