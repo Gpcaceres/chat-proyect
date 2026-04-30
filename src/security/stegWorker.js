@@ -100,11 +100,14 @@ function detectStegPatterns(buffer) {
     }
   }
 
-  // PNG: buscar IEND más próximo al final (0x49 0x45 0x4E 0x44)
-  const iendSig = Buffer.from([0x49, 0x45, 0x4e, 0x44]);
-  let iendIdx = buffer.lastIndexOf(iendSig);
+  // PNG: buscar IEND + CRC completo (8 bytes) para no incluir el CRC como tail
+  // El CRC de IEND es siempre 0xAE426082 (CRC32 de "IEND")
+  const iendFullSig = Buffer.from([
+    0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+  ]);
+  let iendIdx = buffer.lastIndexOf(iendFullSig);
   if (iendIdx > 0) {
-    imageEnd = { type: "PNG", offset: iendIdx + 4, marker: "IEND" };
+    imageEnd = { type: "PNG", offset: iendIdx + 8, marker: "IEND+CRC" };
   }
 
   // GIF: buscar 0x3B más próximo al final

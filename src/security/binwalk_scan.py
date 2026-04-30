@@ -94,85 +94,75 @@ def analyze_entropy_distribution(data, chunk_size=256):
     return std_dev, high_entropy_ratio
 
 
-def detect_steganographic_patterns(data):
-    """Detecta patrones característicos de esteganografía ESPECÍFICAMENTE OpenStego"""
+# Known archive magic signatures for tail detection
+_ARCHIVE_SIGNATURES = [
+    (b'\x50\x4b\x03\x04', 'ZIP'),
+    (b'\x50\x4b\x05\x06', 'ZIP (empty)'),
+    (b'\x1f\x8b', 'GZIP'),
+    (b'\x52\x61\x72\x21', 'RAR'),
+    (b'\x37\x7a\xbc\xaf', '7Z'),
+    (b'\x42\x5a\x68', 'BZIP2'),
+]
+
+
+def find_image_end_offset(data):
+    """Returns the byte offset where the image legitimately ends (start of tail area).
+    Returns -1 if no recognised image end marker is found."""
+    best = -1
+
+    # JPEG: last FF D9 (EOI marker)
+    for i in range(len(data) - 1, 0, -1):
+        if data[i - 1] == 0xFF and data[i] == 0xD9:
+            best = max(best, i + 1)
+            break
+
+    # PNG: last IEND chunk + CRC (8 bytes total: "IEND" + 4-byte CRC 0xAE426082)
+    # CRC of IEND is always constant, so this is unambiguous
+    iend_full = b'IEND\xaeB`\x82'
+    idx = data.rfind(iend_full)
+    if idx != -1:
+        best = max(best, idx + len(iend_full))
+
+    # GIF: last trailer byte 0x3B (only within last 16 bytes to avoid false matches)
+    for i in range(len(data) - 1, max(len(data) - 16, -1), -1):
+        if data[i] == 0x3B:
+            best = max(best, i + 1)
+            break
+
+    return best
+
+
+def detect_archive_in_tail(data):
+    """Detects archive magic bytes strictly AFTER the image end marker.
+    This is the most reliable method: OpenStego always appends a ZIP/GZIP
+    container after the image terminator. Searching the 'second half' of the
+    file is NOT reliable because JPEG DCT data contains every byte sequence."""
     anomalies = []
-    steg_score = 0.0
-    
-    """
-    OpenStego SIEMPRE:
-    1. Incrusta datos DESPUÉS del marcador final
-    2. Los datos típicamente son archivos comprimidos (ZIP/GZIP)
-    3. Deja estructuras binarias reconocibles
-    """
-    
-    # Firmas que buscar
-    signatures = {
-        b'\x50\x4b\x03\x04': ('ZIP local header', 0.45),
-        b'\x50\x4b\x05\x06': ('ZIP central directory', 0.40),
-        b'\x50\x4b\x07\x08': ('ZIP data descriptor', 0.40),
-        b'\x1f\x8b\x08': ('GZIP detected', 0.42),
-        b'\x42\x5a\x68': ('BZIP2 detected', 0.35),
-        b'\x37\x7a\xbc\xaf\x27\x1c': ('7-Zip detected', 0.35),
-    }
-    
-    # Buscar en CUALQUIER LUGAR (OpenStego incrusta en cola)
-    for sig, (name, score) in signatures.items():
-        if sig in data:
-            # Encontrar TODAS las instancias
-            idx = 0
-            found_count = 0
-            while True:
-                idx = data.find(sig, idx)
-                if idx == -1:
-                    break
-                found_count += 1
-                # Si está en segunda mitad del archivo = muy sospechoso
-                if idx > len(data) * 0.5:
-                    anomalies.append(f'{name} at offset {idx} (in tail data)')
-                    steg_score += score
-                idx += 1
-            
-            if found_count > 1:
-                # Múltiples instancias = muy sospechoso
-                anomalies.append(f'{name} found {found_count} times')
-                steg_score += 0.25
-    
-    # Detectar patrones de bytes post-imagen típicos de OpenStego
-    # OpenStego deja un patrón: datos comprimidos + metadatos
-    tail_markers = [
-        (b'\x50\x4b', 'ZIP'),  # ZIP
-        (b'\x1f\x8b', 'GZIP'),  # GZIP
-        (b'\x42\x5a', 'BZIP2'),  # BZIP2
-    ]
-    
-    # Buscar estos marcadores específicamente en la segunda mitad
-    mid_point = len(data) // 2
-    tail_section = data[mid_point:]
-    
-    for marker, name in tail_markers:
-        if marker in tail_section:
-            anomalies.append(f'{name} archive in second half of file (tail data injection)')
-            steg_score += 0.35
-    
-    # OpenStego típicamente introduce bytes NULL irregulares
-    # pero solo es anómalo si está COMBINADO con otros indicadores
-    null_count = data.count(b'\x00')
-    if len(data) > 0:
-        null_ratio = null_count / len(data)
-        if null_ratio > 0.3:  # >30% es REALMENTE anómalo
-            anomalies.append(f'Suspicious NULL byte ratio: {null_ratio:.2%}')
-            steg_score += 0.25
-    
-    # Detectar entropía mixta: baja en imagen, alta en cola = esteganografía
-    first_half_entropy = calculate_entropy(data[:len(data)//2])
-    second_half_entropy = calculate_entropy(data[len(data)//2:])
-    
-    if second_half_entropy > 7.2 and first_half_entropy < 7.0:
-        anomalies.append(f'Entropy jump: {first_half_entropy:.2f} -> {second_half_entropy:.2f} (steg pattern)')
-        steg_score += 0.30
-    
-    return anomalies, min(steg_score, 1.0)
+    end_offset = find_image_end_offset(data)
+
+    if end_offset <= 0 or end_offset >= len(data):
+        return anomalies, 0.0  # No image end found or no tail data
+
+    tail = data[end_offset:]
+    # Strip null-byte camera/encoder padding (Canon, Nikon often add a few null bytes)
+    stripped = tail.lstrip(b'\x00')
+    if not stripped:
+        return anomalies, 0.0  # Only null padding — natural, not suspicious
+
+    for sig, name in _ARCHIVE_SIGNATURES:
+        if stripped[:len(sig)] == sig or sig in stripped[:2048]:
+            anomalies.append(f'{name} archive signature in tail at offset {end_offset}')
+            return anomalies, 0.90  # High confidence: hidden payload appended after image
+
+    # Tail exists but no archive signature — score by size and entropy
+    tail_entropy = calculate_entropy(stripped[:4096])
+    if len(stripped) > 512 and tail_entropy > 7.5:
+        anomalies.append(
+            f'High-entropy tail: {len(stripped)} bytes, entropy={tail_entropy:.2f}'
+        )
+        return anomalies, 0.55  # Suggestive, but not definitive alone (< rejection threshold)
+
+    return anomalies, 0.0  # Small or low-entropy tail — not suspicious
 
 
 def analyze_entropy_chunks(data, chunk_size=512):
@@ -265,12 +255,6 @@ def detect_anomalies(data, filename):
             anomalies.append('GIF header missing or invalid')
         if not data.endswith(b'\x3b'):
             anomalies.append('GIF footer missing')
-
-    std_dev, high_ent_ratio = analyze_entropy_distribution(data)
-    if std_dev > 3.5:
-        anomalies.append(f'Abnormal entropy variance: {std_dev:.2f}')
-    if high_ent_ratio > 0.8:
-        anomalies.append(f'Very high entropy ratio: {high_ent_ratio:.2%}')
 
     return anomalies
 
@@ -407,38 +391,40 @@ def main():
     binwalk_result = analyze_with_binwalk(target)
     tail_bytes = detect_trailing_bytes(data)
     structure_anomalies = detect_anomalies(data, target)
-    steg_anomalies, steg_score = detect_steganographic_patterns(data)
-    all_anomalies = structure_anomalies + steg_anomalies
+    # Use detect_archive_in_tail: only archive sigs AFTER image end are reliable signals
+    tail_anomalies, tail_archive_score = detect_archive_in_tail(data)
+    all_anomalies = structure_anomalies + tail_anomalies
 
     # Optional detectors (require extra dependencies)
     lsb_analysis = analyze_lsb_distribution(data)
     steghide_info = probe_steghide(target)
 
     # ── Weighted scoring ──────────────────────────────────────────────────────
-    # Each detector returns an independent confidence score (0–1).
-    # A single strong signal is sufficient; multiple weak signals boost confidence.
+    # Only use reliable signals to avoid false positives on normal images.
+    # JPEG DCT data naturally contains every byte sequence, so scanning the
+    # 'second half' of a file is NOT a valid steganography signal.
 
-    lsb_score = 0.50 if lsb_analysis.get('suspicious') else 0.0
+    lsb_score = 0.40 if lsb_analysis.get('suspicious') else 0.0
     steghide_score = _steghide_score(steghide_info)
     binwalk_score = 0.80 if binwalk_result.get('suspicious') else 0.0
-    # Ignore tiny tails (≤10 bytes) as they are natural JPEG/camera padding
-    tail_score = 0.70 if tail_bytes > 512 else (0.40 if tail_bytes > 10 else 0.0)
 
     scores = {
-        'steg': steg_score,          # tail + archive sig + entropy jump (JS-style analysis)
-        'lsb': lsb_score,            # LSB pixel distribution (Pillow or byte sampling)
-        'steghide': steghide_score,  # steghide probe tool
-        'binwalk': binwalk_score,    # binwalk embedded archive detection
-        'tail': tail_score,          # raw trailing-byte heuristic
+        'tail_archive': tail_archive_score,  # archive bytes after image end (reliable)
+        'steghide': steghide_score,          # steghide tool confirmation (reliable)
+        'binwalk': binwalk_score,            # binwalk embedded archive (reliable)
+        'lsb': lsb_score,                   # LSB anomaly (weak, needs support)
     }
 
     final_score = max(scores.values())
 
-    # Boost when 2+ independent signals agree
-    signals_firing = sum(1 for s in scores.values() if s >= 0.50)
-    if signals_firing >= 2:
+    # Boost only when 2+ strong independent signals agree (not LSB alone)
+    strong_signals = sum(1 for k, v in scores.items() if v >= 0.65 and k != 'lsb')
+    if strong_signals >= 2:
         final_score = min(final_score + 0.10, 1.0)
+    elif lsb_score >= 0.40 and any(v >= 0.65 for k, v in scores.items() if k != 'lsb'):
+        final_score = min(final_score + 0.05, 1.0)
 
+    signals_firing = sum(1 for v in scores.values() if v >= 0.40)
     suspicious = final_score >= 0.65
 
     build_response(
