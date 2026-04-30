@@ -235,11 +235,40 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint, ip) {
   const normalized = nickname.toLowerCase();
   const clientIp = normalizeIp(ip);
 
+  // Remove any stale session from the exact same fingerprint (same browser tab re-joining).
+  // If the fingerprint matches but the nickname differs, block — same device, different identity.
   for (const [sessionId, session] of roomSessions.entries()) {
     if (session.fingerprint === fingerprint) {
+      if (session.nicknameNormalized !== normalized) {
+        throw new Error(
+          "Ya tienes una sesión activa en esta sala con otro usuario. Cierra tu sesión actual primero.",
+        );
+      }
       roomSessions.delete(sessionId);
     }
   }
+
+  // IP-level check: reject if this IP is already present under any session (any browser/tab).
+  // Allow the re-join only if the existing IP session belongs to the same nickname (stale reconnect).
+  for (const [sessionId, session] of roomSessions.entries()) {
+    if (session.ip === clientIp) {
+      if (session.nicknameNormalized !== normalized) {
+        if (session.socketId) {
+          io.to(session.socketId).emit("device_conflict", {
+            ip: clientIp,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        throw new Error(
+          "Este dispositivo ya está conectado a la sala con otro usuario. Solo se permite una sesión por dispositivo.",
+        );
+      }
+      // Same nickname + same IP = stale session from same user, remove and re-register.
+      roomSessions.delete(sessionId);
+    }
+  }
+
+  // Nickname uniqueness check (different IP, same nickname).
   for (const session of roomSessions.values()) {
     if (session.nicknameNormalized === normalized) {
       if (session.socketId) {
