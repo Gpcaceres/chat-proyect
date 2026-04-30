@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900">
+  <defs>
+    <linearGradient id="bg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#04030f" />
+      <stop offset="100%" stop-color="#0d1a2a" />
+    </linearGradient>
+    <pattern id="doodles" width="120" height="120" patternUnits="userSpaceOnUse">
+      <g opacity="0.25" stroke="#00f0ff" stroke-width="2" fill="none">
+        <circle cx="30" cy="30" r="16" />
+        <path d="M70 18h32l-8 26-24-12z" />
+        <path d="M10 90c12-14 32-14 44 0" />
+        <rect x="70" y="70" width="32" height="32" rx="6" />
+      </g>
+      <g opacity="0.2" stroke="#ffbf00" stroke-width="1.5" fill="none">
+        <path d="M20 60c6-10 22-10 28 0" />
+        <circle cx="96" cy="36" r="10" />
+        <path d="M100 92l14 14-14 14-14-14z" />
+      </g>
+    </pattern>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)" />
+  <rect width="600" height="900" fill="url(#doodles)" />
+</svg>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ViroChat - Conecta con el mundo</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="landing" class="screen landing">
+      <div class="landing-card glass">
+        <img src="/assets/logochat.png" alt="ViroChat" class="landing-logo" />
+        <p class="landing-subtitle">Une a las personas desde cualquier lugar</p>
+        <div class="landing-actions">
+          <button id="open-login" class="btn primary">Entrar</button>
+          <button id="open-admin" class="btn secondary" type="button">Administrar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="login-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content glass">
+        <button id="close-login" class="modal-close" aria-label="Cerrar">&times;</button>
+        <h2 class="modal-title">¡Bienvenido a ViroChat!</h2>
+        <p class="modal-subtitle">Ingresa a una sala segura con tu PIN de acceso</p>
+        <form id="login-form" class="form" autocomplete="off">
+          <label class="form-field">
+            <span>ID de sala</span>
+            <input type="text" id="room-id" name="roomId" placeholder="Ej. 5f9c-2d8a" minlength="6" required />
+          </label>
+          <label class="form-field">
+            <span>PIN de acceso</span>
+            <input
+              type="password"
+              id="room-pin"
+              name="pin"
+              placeholder="Mínimo 4 dígitos"
+              pattern="[0-9A-Za-z]{4,}"
+              required
+            />
+          </label>
+          <label class="form-field">
+            <span>Nickname</span>
+            <input
+              type="text"
+              id="nickname"
+              name="nickname"
+              placeholder="Tu alias"
+              minlength="3"
+              maxlength="32"
+              required
+            />
+          </label>
+          <button type="submit" class="btn primary block">Unirme a la sala</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="chat" class="screen chat hidden">
+      <aside class="sidebar glass">
+        <header class="sidebar-header">
+          <button id="back-to-landing" class="back-btn" title="Volver">
+            <span aria-hidden="true">&#8592;</span>
+          </button>
+          <div class="user-info">
+            <p class="user-label">Identificador</p>
+            <p id="current-user" class="user-name">--</p>
+          </div>
+        </header>
+
+        <section class="sidebar-section">
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span>Usuarios en línea</span>
+          </div>
+          <ul id="online-users" class="user-list"></ul>
+        </section>
+
+        <section class="sidebar-section downloads">
+          <h3>Archivos recientes</h3>
+          <ul id="recent-files" class="file-list"></ul>
+        </section>
+      </aside>
+
+      <main class="chat-area">
+        <div class="chat-background"></div>
+        <header class="chat-header glass">
+          <div>
+            <h1 class="chat-title" id="room-title">Sala segura</h1>
+            <p class="chat-subtitle" id="room-subtitle">Canal cifrado de extremo a extremo</p>
+          </div>
+          <div class="security-status" id="security-indicator" aria-live="polite">
+            <span class="status-dot secure"></span>
+            <span class="security-label">Cifrado activo</span>
+          </div>
+        </header>
+        <section id="messages" class="messages"></section>
+        <form id="message-form" class="message-form glass">
+          <label class="file-upload" title="Compartir archivo">
+            <input type="file" id="file-input" class="hidden" />
+            <span class="icon">📎</span>
+          </label>
+          <input
+            type="text"
+            id="message-input"
+            class="message-input"
+            placeholder="Escribe tu mensaje"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn send">Enviar</button>
+        </form>
+        <p id="upload-hint" class="upload-hint hidden" aria-live="polite"></p>
+      </main>
+    </div>
+
+    <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content glass admin-modal">
+        <button id="close-admin" class="modal-close" aria-label="Cerrar">&times;</button>
+        <h2 class="modal-title">Panel de administración</h2>
+        <p class="modal-subtitle">Gestiona las salas seguras de ViroChat</p>
+
+        <section id="admin-login-section">
+          <form id="admin-login-form" class="form" autocomplete="off">
+            <label class="form-field">
+              <span>Usuario administrador</span>
+              <input id="admin-username" name="username" type="text" minlength="3" required />
+            </label>
+            <label class="form-field">
+              <span>Contraseña</span>
+              <input id="admin-password" name="password" type="password" minlength="6" required />
+            </label>
+            <label class="form-field">
+              <span>Token 2FA (opcional)</span>
+              <input
+                id="admin-token"
+                name="token"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]{6}"
+                placeholder="Código temporal"
+              />
+            </label>
+            <button type="submit" class="btn primary block">Iniciar sesión</button>
+          </form>
+        </section>
+
+        <section id="admin-room-section" class="hidden">
+          <div class="admin-status" id="admin-status" role="status" aria-live="polite"></div>
+          <form id="admin-room-form" class="form admin-room-form">
+            <label class="form-field">
+              <span>Tipo de sala</span>
+              <select id="room-type" name="type">
+                <option value="text">Texto seguro</option>
+                <option value="multimedia">Multimedia supervisada</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>PIN de acceso</span>
+              <input
+                id="room-pin-admin"
+                name="pin"
+                type="text"
+                pattern="[0-9A-Za-z]{4,}"
+                placeholder="Mínimo 4 caracteres"
+                required
+              />
+            </label>
+            <label class="form-field">
+              <span>Tamaño máximo de archivo (MB)</span>
+              <input id="room-max-size" name="maxFileSizeMB" type="number" min="1" max="50" value="10" />
+            </label>
+            <div class="admin-actions">
+              <button type="button" id="admin-logout" class="btn tertiary">Cerrar sesión</button>
+              <button type="submit" class="btn primary">Crear sala segura</button>
+            </div>
+          </form>
+          <div class="admin-results">
+            <h3>Salas generadas</h3>
+            <ul id="admin-rooms" class="admin-room-list"></ul>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <template id="message-template">
+      <article class="message">
+        <header class="message-meta">
+          <span class="message-author"></span>
+          <span class="message-time"></span>
+        </header>
+        <p class="message-text"></p>
+      </article>
+    </template>
+
+    <template id="file-template">
+      <article class="message file">
+        <header class="message-meta">
+          <span class="message-author"></span>
+          <span class="message-time"></span>
+        </header>
+        <a class="file-link" target="_blank" rel="noopener noreferrer">
+          <span class="file-icon">⬇️</span>
+          <div class="file-info">
+            <span class="file-name"></span>
+            <span class="file-size"></span>
+            <div class="file-security hidden">
+              <span class="file-entropy"></span>
+              <span class="file-lsb"></span>
+              <span class="file-stego"></span>
+            </div>
+          </div>
+        </a>
+        <div class="file-preview hidden">
+          <img
+            class="file-preview-image"
+            alt="Vista previa del archivo compartido"
+            loading="lazy"
+          />
+          <div class="file-preview-meta hidden">
+            <div class="file-preview-icon" aria-hidden="true">📎</div>
+            <div class="file-preview-texts">
+              <span class="file-preview-type"></span>
+              <span class="file-preview-hint"></span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <template id="system-template">
+      <article class="message system">
+        <p class="message-text"></p>
+      </article>
+    </template>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/app.js" type="module"></script>
+  </body>
+</html>
