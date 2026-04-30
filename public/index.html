@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -19,20 +19,33 @@
         <p class="landing-subtitle">Une a las personas desde cualquier lugar</p>
         <div class="landing-actions">
           <button id="open-login" class="btn primary">Entrar</button>
-          <button id="open-admin" class="btn secondary" type="button">Administrar</button>
+          <button id="open-admin" class="btn secondary" type="button">
+            Administrar
+          </button>
         </div>
       </div>
     </div>
 
     <div id="login-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content glass">
-        <button id="close-login" class="modal-close" aria-label="Cerrar">&times;</button>
+        <button id="close-login" class="modal-close" aria-label="Cerrar">
+          &times;
+        </button>
         <h2 class="modal-title">¡Bienvenido a ViroChat!</h2>
-        <p class="modal-subtitle">Ingresa a una sala segura con tu PIN de acceso</p>
+        <p class="modal-subtitle">
+          Ingresa a una sala segura con tu PIN de acceso
+        </p>
         <form id="login-form" class="form" autocomplete="off">
           <label class="form-field">
             <span>ID de sala</span>
-            <input type="text" id="room-id" name="roomId" placeholder="Ej. 5f9c-2d8a" minlength="6" required />
+            <input
+              type="text"
+              id="room-id"
+              name="roomId"
+              placeholder="Ej. 5f9c-2d8a"
+              minlength="6"
+              required
+            />
           </label>
           <label class="form-field">
             <span>PIN de acceso</span>
@@ -57,7 +70,9 @@
               required
             />
           </label>
-          <button type="submit" class="btn primary block">Unirme a la sala</button>
+          <button type="submit" class="btn primary block">
+            Unirme a la sala
+          </button>
         </form>
       </div>
     </div>
@@ -93,9 +108,15 @@
         <header class="chat-header glass">
           <div>
             <h1 class="chat-title" id="room-title">Sala segura</h1>
-            <p class="chat-subtitle" id="room-subtitle">Canal cifrado de extremo a extremo</p>
+            <p class="chat-subtitle" id="room-subtitle">
+              Canal cifrado de extremo a extremo
+            </p>
           </div>
-          <div class="security-status" id="security-indicator" aria-live="polite">
+          <div
+            class="security-status"
+            id="security-indicator"
+            aria-live="polite"
+          >
             <span class="status-dot secure"></span>
             <span class="security-label">Cifrado activo</span>
           </div>
@@ -103,7 +124,12 @@
         <section id="messages" class="messages"></section>
         <form id="message-form" class="message-form glass">
           <label class="file-upload" title="Compartir archivo">
-            <input type="file" id="file-input" class="hidden" />
+            <input
+              type="file"
+              id="file-input"
+              class="hidden"
+              accept="image/jpeg,image/png,image/gif,application/pdf,text/plain,application/zip"
+            />
             <span class="icon">📎</span>
           </label>
           <input
@@ -121,7 +147,9 @@
 
     <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content glass admin-modal">
-        <button id="close-admin" class="modal-close" aria-label="Cerrar">&times;</button>
+        <button id="close-admin" class="modal-close" aria-label="Cerrar">
+          &times;
+        </button>
         <h2 class="modal-title">Panel de administración</h2>
         <p class="modal-subtitle">Gestiona las salas seguras de ViroChat</p>
 
@@ -129,11 +157,23 @@
           <form id="admin-login-form" class="form" autocomplete="off">
             <label class="form-field">
               <span>Usuario administrador</span>
-              <input id="admin-username" name="username" type="text" minlength="3" required />
+              <input
+                id="admin-username"
+                name="username"
+                type="text"
+                minlength="3"
+                required
+              />
             </label>
             <label class="form-field">
               <span>Contraseña</span>
-              <input id="admin-password" name="password" type="password" minlength="6" required />
+              <input
+                id="admin-password"
+                name="password"
+                type="password"
+                minlength="6"
+                required
+              />
             </label>
             <label class="form-field">
               <span>Token 2FA (opcional)</span>
@@ -146,12 +186,19 @@
                 placeholder="Código temporal"
               />
             </label>
-            <button type="submit" class="btn primary block">Iniciar sesión</button>
+            <button type="submit" class="btn primary block">
+              Iniciar sesión
+            </button>
           </form>
         </section>
 
         <section id="admin-room-section" class="hidden">
-          <div class="admin-status" id="admin-status" role="status" aria-live="polite"></div>
+          <div
+            class="admin-status"
+            id="admin-status"
+            role="status"
+            aria-live="polite"
+          ></div>
           <form id="admin-room-form" class="form admin-room-form">
             <label class="form-field">
               <span>Tipo de sala</span>
@@ -173,11 +220,22 @@
             </label>
             <label class="form-field">
               <span>Tamaño máximo de archivo (MB)</span>
-              <input id="room-max-size" name="maxFileSizeMB" type="number" min="1" max="50" value="10" />
+              <input
+                id="room-max-size"
+                name="maxFileSizeMB"
+                type="number"
+                min="1"
+                max="50"
+                value="10"
+              />
             </label>
             <div class="admin-actions">
-              <button type="button" id="admin-logout" class="btn tertiary">Cerrar sesión</button>
-              <button type="submit" class="btn primary">Crear sala segura</button>
+              <button type="button" id="admin-logout" class="btn tertiary">
+                Cerrar sesión
+              </button>
+              <button type="submit" class="btn primary">
+                Crear sala segura
+              </button>
             </div>
           </form>
           <div class="admin-results">

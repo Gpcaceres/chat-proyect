@@ -1,45 +1,45 @@
-const landingScreen = document.getElementById('landing');
-const chatScreen = document.getElementById('chat');
-const loginModal = document.getElementById('login-modal');
-const openLoginBtn = document.getElementById('open-login');
-const closeLoginBtn = document.getElementById('close-login');
-const openAdminBtn = document.getElementById('open-admin');
-const loginForm = document.getElementById('login-form');
-const messageForm = document.getElementById('message-form');
-const messageInput = document.getElementById('message-input');
-const messagesContainer = document.getElementById('messages');
-const usersList = document.getElementById('online-users');
-const fileInput = document.getElementById('file-input');
-const recentFilesList = document.getElementById('recent-files');
-const currentUserLabel = document.getElementById('current-user');
-const backButton = document.getElementById('back-to-landing');
-const securityIndicator = document.getElementById('security-indicator');
-const roomTitle = document.getElementById('room-title');
-const roomSubtitle = document.getElementById('room-subtitle');
-const roomIdInput = document.getElementById('room-id');
-const roomPinInput = document.getElementById('room-pin');
-const nicknameInput = document.getElementById('nickname');
-const uploadHint = document.getElementById('upload-hint');
+const landingScreen = document.getElementById("landing");
+const chatScreen = document.getElementById("chat");
+const loginModal = document.getElementById("login-modal");
+const openLoginBtn = document.getElementById("open-login");
+const closeLoginBtn = document.getElementById("close-login");
+const openAdminBtn = document.getElementById("open-admin");
+const loginForm = document.getElementById("login-form");
+const messageForm = document.getElementById("message-form");
+const messageInput = document.getElementById("message-input");
+const messagesContainer = document.getElementById("messages");
+const usersList = document.getElementById("online-users");
+const fileInput = document.getElementById("file-input");
+const recentFilesList = document.getElementById("recent-files");
+const currentUserLabel = document.getElementById("current-user");
+const backButton = document.getElementById("back-to-landing");
+const securityIndicator = document.getElementById("security-indicator");
+const roomTitle = document.getElementById("room-title");
+const roomSubtitle = document.getElementById("room-subtitle");
+const roomIdInput = document.getElementById("room-id");
+const roomPinInput = document.getElementById("room-pin");
+const nicknameInput = document.getElementById("nickname");
+const uploadHint = document.getElementById("upload-hint");
 
-const adminModal = document.getElementById('admin-modal');
-const closeAdminBtn = document.getElementById('close-admin');
-const adminLoginForm = document.getElementById('admin-login-form');
-const adminRoomForm = document.getElementById('admin-room-form');
-const adminLoginSection = document.getElementById('admin-login-section');
-const adminRoomSection = document.getElementById('admin-room-section');
-const adminStatus = document.getElementById('admin-status');
-const adminRoomsList = document.getElementById('admin-rooms');
-const adminUsernameInput = document.getElementById('admin-username');
-const adminPasswordInput = document.getElementById('admin-password');
-const adminTokenInput = document.getElementById('admin-token');
-const adminLogoutBtn = document.getElementById('admin-logout');
-const adminRoomTypeSelect = document.getElementById('room-type');
-const adminRoomPinInput = document.getElementById('room-pin-admin');
-const adminRoomMaxInput = document.getElementById('room-max-size');
+const adminModal = document.getElementById("admin-modal");
+const closeAdminBtn = document.getElementById("close-admin");
+const adminLoginForm = document.getElementById("admin-login-form");
+const adminRoomForm = document.getElementById("admin-room-form");
+const adminLoginSection = document.getElementById("admin-login-section");
+const adminRoomSection = document.getElementById("admin-room-section");
+const adminStatus = document.getElementById("admin-status");
+const adminRoomsList = document.getElementById("admin-rooms");
+const adminUsernameInput = document.getElementById("admin-username");
+const adminPasswordInput = document.getElementById("admin-password");
+const adminTokenInput = document.getElementById("admin-token");
+const adminLogoutBtn = document.getElementById("admin-logout");
+const adminRoomTypeSelect = document.getElementById("room-type");
+const adminRoomPinInput = document.getElementById("room-pin-admin");
+const adminRoomMaxInput = document.getElementById("room-max-size");
 
-const messageTemplate = document.getElementById('message-template');
-const fileTemplate = document.getElementById('file-template');
-const systemTemplate = document.getElementById('system-template');
+const messageTemplate = document.getElementById("message-template");
+const fileTemplate = document.getElementById("file-template");
+const systemTemplate = document.getElementById("system-template");
 
 let socket = null;
 let cryptoKey = null;
@@ -48,114 +48,141 @@ let activeRoom = null;
 const recentFiles = [];
 let adminToken = null;
 
+// Unique ID per browser tab — persists across reloads of the same tab but
+// differs between tabs/windows, so multiple users on the same machine don't
+// overwrite each other's session in the server registry.
+if (!sessionStorage.getItem("clientId")) {
+  sessionStorage.setItem("clientId", crypto.randomUUID());
+}
+const CLIENT_ID = sessionStorage.getItem("clientId");
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-const PREVIEWABLE_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+const PREVIEWABLE_IMAGE_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".bmp",
+];
 const ENTROPY_ALERT_THRESHOLD = 7.985;
 const FILE_PREVIEW_GROUPS = [
   {
-    key: 'pdf',
-    label: 'Documento PDF',
-    icon: '📕',
-    accentClass: 'preview-pdf',
-    extensions: ['.pdf'],
-    mimetypes: ['application/pdf'],
+    key: "pdf",
+    label: "Documento PDF",
+    icon: "📕",
+    accentClass: "preview-pdf",
+    extensions: [".pdf"],
+    mimetypes: ["application/pdf"],
   },
   {
-    key: 'document',
-    label: 'Documento',
-    icon: '📄',
-    accentClass: 'preview-document',
-    extensions: ['.doc', '.docx', '.odt', '.rtf'],
+    key: "document",
+    label: "Documento",
+    icon: "📄",
+    accentClass: "preview-document",
+    extensions: [".doc", ".docx", ".odt", ".rtf"],
     mimetypes: [
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/rtf',
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/rtf",
     ],
   },
   {
-    key: 'text',
-    label: 'Archivo de texto',
-    icon: '📘',
-    accentClass: 'preview-document',
-    extensions: ['.txt', '.md', '.json', '.log'],
-    mimetypes: ['text/plain', 'application/json'],
+    key: "text",
+    label: "Archivo de texto",
+    icon: "📘",
+    accentClass: "preview-document",
+    extensions: [".txt", ".md", ".json", ".log"],
+    mimetypes: ["text/plain", "application/json"],
   },
   {
-    key: 'presentation',
-    label: 'Presentación',
-    icon: '📊',
-    accentClass: 'preview-presentation',
-    extensions: ['.ppt', '.pptx', '.odp', '.key'],
+    key: "presentation",
+    label: "Presentación",
+    icon: "📊",
+    accentClass: "preview-presentation",
+    extensions: [".ppt", ".pptx", ".odp", ".key"],
     mimetypes: [
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ],
   },
   {
-    key: 'spreadsheet',
-    label: 'Hoja de cálculo',
-    icon: '📈',
-    accentClass: 'preview-spreadsheet',
-    extensions: ['.xls', '.xlsx', '.csv', '.ods'],
+    key: "spreadsheet",
+    label: "Hoja de cálculo",
+    icon: "📈",
+    accentClass: "preview-spreadsheet",
+    extensions: [".xls", ".xlsx", ".csv", ".ods"],
     mimetypes: [
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv',
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/csv",
     ],
   },
   {
-    key: 'archive',
-    label: 'Archivo comprimido',
-    icon: '🗜️',
-    accentClass: 'preview-archive',
-    extensions: ['.zip', '.rar', '.7z', '.tar', '.gz'],
-    mimetypes: ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed'],
+    key: "archive",
+    label: "Archivo comprimido",
+    icon: "🗜️",
+    accentClass: "preview-archive",
+    extensions: [".zip", ".rar", ".7z", ".tar", ".gz"],
+    mimetypes: [
+      "application/zip",
+      "application/x-rar-compressed",
+      "application/x-7z-compressed",
+    ],
   },
   {
-    key: 'audio',
-    label: 'Audio',
-    icon: '🎧',
-    accentClass: 'preview-audio',
-    extensions: ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a'],
-    mimetypes: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac'],
+    key: "audio",
+    label: "Audio",
+    icon: "🎧",
+    accentClass: "preview-audio",
+    extensions: [".mp3", ".wav", ".ogg", ".aac", ".flac", ".m4a"],
+    mimetypes: [
+      "audio/mpeg",
+      "audio/wav",
+      "audio/ogg",
+      "audio/flac",
+      "audio/aac",
+    ],
   },
   {
-    key: 'video',
-    label: 'Video',
-    icon: '🎬',
-    accentClass: 'preview-video',
-    extensions: ['.mp4', '.mov', '.avi', '.mkv', '.webm'],
-    mimetypes: ['video/mp4', 'video/webm', 'video/quicktime'],
+    key: "video",
+    label: "Video",
+    icon: "🎬",
+    accentClass: "preview-video",
+    extensions: [".mp4", ".mov", ".avi", ".mkv", ".webm"],
+    mimetypes: ["video/mp4", "video/webm", "video/quicktime"],
   },
   {
-    key: 'link',
-    label: 'Enlace compartido',
-    icon: '🔗',
-    accentClass: 'preview-link',
+    key: "link",
+    label: "Enlace compartido",
+    icon: "🔗",
+    accentClass: "preview-link",
     predicate: (fileMessage) => isExternalUrl(fileMessage?.url),
   },
 ];
 
 const PREVIEW_ACCENT_CLASSES = Array.from(
-  new Set(FILE_PREVIEW_GROUPS.map((group) => group.accentClass || 'preview-generic'))
+  new Set(
+    FILE_PREVIEW_GROUPS.map((group) => group.accentClass || "preview-generic"),
+  ),
 );
-if (!PREVIEW_ACCENT_CLASSES.includes('preview-generic')) {
-  PREVIEW_ACCENT_CLASSES.push('preview-generic');
+if (!PREVIEW_ACCENT_CLASSES.includes("preview-generic")) {
+  PREVIEW_ACCENT_CLASSES.push("preview-generic");
 }
 
-openLoginBtn.addEventListener('click', () => {
-  loginModal.classList.remove('hidden');
+openLoginBtn.addEventListener("click", () => {
+  loginModal.classList.remove("hidden");
   roomIdInput.focus();
 });
 
-closeLoginBtn.addEventListener('click', () => {
-  loginModal.classList.add('hidden');
+closeLoginBtn.addEventListener("click", () => {
+  loginModal.classList.add("hidden");
 });
 
-openAdminBtn?.addEventListener('click', () => {
-  adminModal?.classList.remove('hidden');
+openAdminBtn?.addEventListener("click", () => {
+  adminModal?.classList.remove("hidden");
   if (adminToken) {
     adminRoomPinInput?.focus();
   } else {
@@ -163,116 +190,118 @@ openAdminBtn?.addEventListener('click', () => {
   }
 });
 
-closeAdminBtn?.addEventListener('click', () => {
-  adminModal?.classList.add('hidden');
+closeAdminBtn?.addEventListener("click", () => {
+  adminModal?.classList.add("hidden");
 });
 
-backButton.addEventListener('click', async () => {
-  await terminateSession({ reason: 'manual_exit' });
+backButton.addEventListener("click", async () => {
+  await terminateSession({ reason: "manual_exit" });
   resetState();
   window.location.reload();
 });
 
-window.addEventListener('beforeunload', () => {
+window.addEventListener("beforeunload", () => {
   if (socket) {
     socket.disconnect();
   }
-  terminateSession({ reason: 'window_unload', keepalive: true });
+  terminateSession({ reason: "window_unload", keepalive: true });
 });
 
-loginForm.addEventListener('submit', async (event) => {
+loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const roomId = roomIdInput.value.trim();
   const pin = roomPinInput.value.trim();
   const nickname = nicknameInput.value.trim();
 
   if (!roomId || !pin || !nickname) {
-    showToast('Completa todos los campos para continuar.');
+    showToast("Completa todos los campos para continuar.");
     return;
   }
 
   try {
-    const response = await fetch('/api/rooms/access', {
-      method: 'POST',
+    const response = await fetch("/api/rooms/access", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ roomId, pin, nickname }),
+      body: JSON.stringify({ roomId, pin, nickname, clientId: CLIENT_ID }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'No se pudo acceder a la sala.');
+      throw new Error(error.message || "No se pudo acceder a la sala.");
     }
 
     const payload = await response.json();
     await initializeSession(payload);
-    loginModal.classList.add('hidden');
-    landingScreen.classList.add('hidden');
-    chatScreen.classList.remove('hidden');
+    loginModal.classList.add("hidden");
+    landingScreen.classList.add("hidden");
+    chatScreen.classList.remove("hidden");
     messageInput.focus();
   } catch (error) {
-    showToast(error.message || 'Error al acceder a la sala.');
+    showToast(error.message || "Error al acceder a la sala.");
   }
 });
 
-adminLoginForm?.addEventListener('submit', async (event) => {
+adminLoginForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = adminUsernameInput?.value.trim();
   const password = adminPasswordInput?.value.trim();
   const token = adminTokenInput?.value.trim();
 
   if (!username || !password) {
-    showToast('Ingresa usuario y contraseña de administrador.');
+    showToast("Ingresa usuario y contraseña de administrador.");
     return;
   }
 
   try {
-    const response = await fetch('/api/admin/login', {
-      method: 'POST',
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ username, password, token }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'No se pudo iniciar sesión como administrador.');
+      throw new Error(
+        error.message || "No se pudo iniciar sesión como administrador.",
+      );
     }
 
     const payload = await response.json();
     adminLoginForm.reset();
     adminPasswordInput?.blur();
     establishAdminSession(username, payload.token, payload.expiresIn);
-    showToast('Sesión de administrador iniciada.');
+    showToast("Sesión de administrador iniciada.");
   } catch (error) {
-    showToast(error.message || 'Error al autenticar administrador.');
+    showToast(error.message || "Error al autenticar administrador.");
   }
 });
 
-adminRoomForm?.addEventListener('submit', async (event) => {
+adminRoomForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!adminToken) {
-    showToast('Inicia sesión como administrador para crear salas.');
+    showToast("Inicia sesión como administrador para crear salas.");
     return;
   }
 
-  const type = adminRoomTypeSelect?.value || 'text';
+  const type = adminRoomTypeSelect?.value || "text";
   const pin = adminRoomPinInput?.value.trim();
   const maxSizeValue = adminRoomMaxInput?.value;
   const maxFileSizeMB = maxSizeValue ? Number(maxSizeValue) : undefined;
 
   if (!pin || pin.length < 4) {
-    showToast('El PIN debe tener al menos 4 caracteres.');
+    showToast("El PIN debe tener al menos 4 caracteres.");
     return;
   }
 
   try {
-    const response = await fetch('/api/admin/rooms', {
-      method: 'POST',
+    const response = await fetch("/api/admin/rooms", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${adminToken}`,
       },
       body: JSON.stringify({ type, pin, maxFileSizeMB }),
@@ -283,24 +312,24 @@ adminRoomForm?.addEventListener('submit', async (event) => {
         resetAdminSession();
       }
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'No se pudo crear la sala.');
+      throw new Error(error.message || "No se pudo crear la sala.");
     }
 
     const room = await response.json();
-    adminRoomPinInput.value = '';
+    adminRoomPinInput.value = "";
     addAdminRoomToList({ ...room, pin });
-    showToast('Sala creada correctamente.');
+    showToast("Sala creada correctamente.");
   } catch (error) {
-    showToast(error.message || 'Error creando sala segura.');
+    showToast(error.message || "Error creando sala segura.");
   }
 });
 
-adminLogoutBtn?.addEventListener('click', () => {
+adminLogoutBtn?.addEventListener("click", () => {
   resetAdminSession();
-  showToast('Sesión de administrador finalizada.');
+  showToast("Sesión de administrador finalizada.");
 });
 
-messageForm.addEventListener('submit', async (event) => {
+messageForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = messageInput.value.trim();
   if (!text || !socket || !session || !cryptoKey) {
@@ -309,36 +338,62 @@ messageForm.addEventListener('submit', async (event) => {
 
   try {
     const payload = await encryptMessage(text);
-    socket.emit('chat_message', {
+    socket.emit("chat_message", {
       roomId: activeRoom.id,
       payload,
     });
-    messageInput.value = '';
+    messageInput.value = "";
     messageInput.focus();
   } catch (error) {
-    showToast('No se pudo cifrar el mensaje.');
+    showToast("No se pudo cifrar el mensaje.");
     console.error(error);
   }
 });
 
-fileInput.addEventListener('change', async (event) => {
+fileInput.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   if (!file || !session) {
     return;
   }
-  if (!activeRoom || activeRoom.type !== 'multimedia') {
-    showToast('Esta sala no permite compartir archivos. Solicita una sala multimedia al administrador.');
-    fileInput.value = '';
+  if (!activeRoom || activeRoom.type !== "multimedia") {
+    showToast(
+      "Esta sala no permite compartir archivos. Solicita una sala multimedia al administrador.",
+    );
+    fileInput.value = "";
+    return;
+  }
+
+  // Validación client-side: tipo MIME permitido
+  const ALLOWED_CLIENT_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "application/pdf",
+    "text/plain",
+    "application/zip",
+  ];
+  if (!ALLOWED_CLIENT_TYPES.includes(file.type)) {
+    showToast(
+      `Tipo de archivo no permitido (${file.type || "desconocido"}). Solo se aceptan: imágenes JPEG, PNG, GIF · PDF · texto plano · ZIP.`,
+    );
+    fileInput.value = "";
+    return;
+  }
+
+  // Validación client-side: tamaño máximo 15 MB
+  if (file.size > 15 * 1024 * 1024) {
+    showToast("El archivo excede el tamaño máximo permitido de 15 MB.");
+    fileInput.value = "";
     return;
   }
 
   try {
-    updateSecurityIndicator('processing', 'Analizando archivo...');
+    updateSecurityIndicator("processing", "Analizando archivo...");
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     const response = await fetch(`/api/rooms/${activeRoom.id}/upload`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${session.token}`,
       },
@@ -347,11 +402,11 @@ fileInput.addEventListener('change', async (event) => {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'No se pudo compartir el archivo.');
+      throw new Error(error.message || "No se pudo compartir el archivo.");
     }
 
     const data = await response.json();
-    socket.emit('file_shared', {
+    socket.emit("file_shared", {
       roomId: activeRoom.id,
       url: data.url,
       name: data.originalName,
@@ -362,12 +417,12 @@ fileInput.addEventListener('change', async (event) => {
       lsb: data.lsb,
       stegProbe: data.stegProbe,
     });
-    showToast('Archivo compartido con éxito.');
+    showToast("Archivo compartido con éxito.");
   } catch (error) {
-    showToast(error.message || 'No se pudo compartir el archivo.');
+    showToast(error.message || "No se pudo compartir el archivo.");
   } finally {
-    updateSecurityIndicator('secure', 'Cifrado activo');
-    fileInput.value = '';
+    updateSecurityIndicator("secure", "Cifrado activo");
+    fileInput.value = "";
   }
 });
 
@@ -380,36 +435,39 @@ async function initializeSession(payload) {
   activeRoom = payload.room;
   cryptoKey = await importSessionKey(payload.sessionKey);
 
-  currentUserLabel.textContent = formatAlias(session.displayName, session.nicknameHash);
+  currentUserLabel.textContent = formatAlias(
+    session.displayName,
+    session.nicknameHash,
+  );
   roomTitle.textContent = `Sala ${formatHash(activeRoom.id)}`;
   roomSubtitle.textContent =
-    activeRoom.type === 'multimedia'
-      ? 'Canal multimedia cifrado con monitoreo de archivos'
-      : 'Canal de texto cifrado de extremo a extremo';
-  updateSecurityIndicator('secure', 'Cifrado activo');
+    activeRoom.type === "multimedia"
+      ? "Canal multimedia cifrado con monitoreo de archivos"
+      : "Canal de texto cifrado de extremo a extremo";
+  updateSecurityIndicator("secure", "Cifrado activo");
 
-  configureFileUpload(activeRoom.type === 'multimedia');
+  configureFileUpload(activeRoom.type === "multimedia");
 
   initializeSocket();
 }
 
 async function terminateSession(options = {}) {
   if (!session || !activeRoom) return;
-  const reason = options.reason || 'manual_exit';
+  const reason = options.reason || "manual_exit";
 
   try {
     await fetch(`/api/rooms/${encodeURIComponent(activeRoom.id)}/leave`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${session.token}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ reason }),
       keepalive: Boolean(options.keepalive),
     });
   } catch (error) {
     if (!options.keepalive) {
-      console.error('No se pudo terminar la sesión', error);
+      console.error("No se pudo terminar la sesión", error);
     }
   }
 }
@@ -422,22 +480,22 @@ function resetState() {
     socket.disconnect();
     socket = null;
   }
-  currentUserLabel.textContent = '--';
-  messagesContainer.innerHTML = '';
-  usersList.innerHTML = '';
+  currentUserLabel.textContent = "--";
+  messagesContainer.innerHTML = "";
+  usersList.innerHTML = "";
   recentFiles.length = 0;
-  recentFilesList.innerHTML = '';
+  recentFilesList.innerHTML = "";
   loginForm.reset();
   configureFileUpload(false);
 }
 
 function resetAdminSession() {
   adminToken = null;
-  adminLoginSection?.classList.remove('hidden');
-  adminRoomSection?.classList.add('hidden');
-  adminRoomsList && (adminRoomsList.innerHTML = '');
+  adminLoginSection?.classList.remove("hidden");
+  adminRoomSection?.classList.add("hidden");
+  adminRoomsList && (adminRoomsList.innerHTML = "");
   if (adminStatus) {
-    adminStatus.textContent = '';
+    adminStatus.textContent = "";
   }
   adminLoginForm?.reset();
   adminRoomForm?.reset();
@@ -446,10 +504,10 @@ function resetAdminSession() {
 function establishAdminSession(username, token, expiresIn) {
   adminToken = token;
   if (adminLoginSection) {
-    adminLoginSection.classList.add('hidden');
+    adminLoginSection.classList.add("hidden");
   }
   if (adminRoomSection) {
-    adminRoomSection.classList.remove('hidden');
+    adminRoomSection.classList.remove("hidden");
   }
   if (adminStatus) {
     const minutes = expiresIn ? Math.floor(expiresIn / 60) : null;
@@ -462,23 +520,24 @@ function establishAdminSession(username, token, expiresIn) {
 
 function addAdminRoomToList(room) {
   if (!adminRoomsList) return;
-  const item = document.createElement('li');
-  const title = document.createElement('strong');
-  const typeLabel = room.type === 'multimedia' ? 'Multimedia supervisada' : 'Texto seguro';
+  const item = document.createElement("li");
+  const title = document.createElement("strong");
+  const typeLabel =
+    room.type === "multimedia" ? "Multimedia supervisada" : "Texto seguro";
   title.textContent = `Sala ${formatHash(room.roomId)} · ${typeLabel}`;
 
-  const idLine = document.createElement('code');
+  const idLine = document.createElement("code");
   idLine.textContent = `ID: ${room.roomId}`;
 
-  const pinLine = document.createElement('code');
+  const pinLine = document.createElement("code");
   pinLine.textContent = `PIN: ${room.pin}`;
 
-  const encryptedLine = document.createElement('code');
+  const encryptedLine = document.createElement("code");
   encryptedLine.textContent = `ID cifrado: ${room.encryptedId}`;
 
-  const meta = document.createElement('small');
+  const meta = document.createElement("small");
   const createdAt = room.createdAt ? new Date(room.createdAt) : new Date();
-  meta.textContent = `Creada el ${createdAt.toLocaleString('es-ES')}`;
+  meta.textContent = `Creada el ${createdAt.toLocaleString("es-ES")}`;
 
   item.appendChild(title);
   item.appendChild(meta);
@@ -497,82 +556,95 @@ async function initializeSocket() {
 
   socket = io({
     auth: { token: session.token },
-    transports: ['websocket'],
+    transports: ["websocket"],
   });
 
-  socket.on('connect', () => {
-    updateSecurityIndicator('secure', 'Cifrado activo');
+  socket.on("connect", () => {
+    updateSecurityIndicator("secure", "Cifrado activo");
   });
 
-  socket.on('connect_error', (error) => {
-    updateSecurityIndicator('warning', 'Reintentando conexión...');
-    showToast(error.message || 'No se pudo conectar con el chat.');
+  socket.on("connect_error", (error) => {
+    updateSecurityIndicator("warning", "Reintentando conexión...");
+    showToast(error.message || "No se pudo conectar con el chat.");
   });
 
-  socket.on('disconnect', () => {
-    updateSecurityIndicator('warning', 'Sin conexión');
+  socket.on("disconnect", () => {
+    updateSecurityIndicator("warning", "Sin conexión");
   });
 
-  socket.on('user_list', (users) => {
+  socket.on("user_list", (users) => {
     renderUserList(users || []);
   });
 
-  socket.on('chat_message', async (message) => {
+  socket.on("chat_message", async (message) => {
     if (!message || !message.payload) return;
-    let decryptedText = 'Mensaje cifrado';
+    let decryptedText = "Mensaje cifrado";
     try {
       decryptedText = await decryptMessage(message.payload);
     } catch (error) {
-      console.error('No se pudo descifrar el mensaje', error);
+      console.error("No se pudo descifrar el mensaje", error);
     }
     renderMessage({ ...message, text: decryptedText });
   });
 
-  socket.on('file_shared', (fileMessage) => {
+  socket.on("file_shared", (fileMessage) => {
     renderFileMessage(fileMessage);
   });
 
-  socket.on('system_message', (systemMessage) => {
+  socket.on("system_message", (systemMessage) => {
+    if (systemMessage.type === "inactivity_timeout") {
+      showToast(
+        systemMessage.message || "Sesión cerrada por inactividad prolongada.",
+      );
+      setTimeout(() => {
+        resetState();
+        window.location.reload();
+      }, 2000);
+      return;
+    }
     renderSystemMessage(systemMessage);
   });
 
-  socket.on('security_alert', (alert) => {
-    updateSecurityIndicator('warning', 'Alerta de seguridad');
+  socket.on("security_alert", (alert) => {
+    updateSecurityIndicator("warning", "Alerta de seguridad");
     renderSecurityAlert(alert);
   });
 }
 
 function renderUserList(users) {
-  usersList.innerHTML = '';
+  usersList.innerHTML = "";
 
   if (!Array.isArray(users) || users.length === 0) {
-    const li = document.createElement('li');
-    li.textContent = 'No hay usuarios conectados';
-    li.classList.add('empty');
+    const li = document.createElement("li");
+    li.textContent = "No hay usuarios conectados";
+    li.classList.add("empty");
     usersList.appendChild(li);
     return;
   }
 
   users.forEach((user) => {
-    const li = document.createElement('li');
-    const identity = document.createElement('div');
-    identity.classList.add('user-identity');
-    const alias = document.createElement('span');
-    alias.classList.add('user-alias');
+    const li = document.createElement("li");
+    const identity = document.createElement("div");
+    identity.classList.add("user-identity");
+    const alias = document.createElement("span");
+    alias.classList.add("user-alias");
     alias.textContent = formatAlias(user.displayName, user.nicknameHash);
-    const hash = document.createElement('span');
+    const hash = document.createElement("span");
     hash.textContent = formatHash(user.nicknameHash);
-    hash.classList.add('hash-badge');
+    hash.classList.add("hash-badge");
     identity.appendChild(alias);
     identity.appendChild(hash);
     li.appendChild(identity);
     if (user.connectedAt) {
-      const meta = document.createElement('span');
-      meta.textContent = new Date(user.connectedAt).toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      meta.classList.add('user-mail');
+      const meta = document.createElement("span");
+      meta.textContent = new Date(user.connectedAt).toLocaleTimeString(
+        "es-ES",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+        },
+      );
+      meta.classList.add("user-mail");
       li.appendChild(meta);
     }
     usersList.appendChild(li);
@@ -581,68 +653,88 @@ function renderUserList(users) {
 
 function renderMessage(message) {
   const template = messageTemplate.content.cloneNode(true);
-  template
-    .querySelector('.message-author')
-    .textContent = formatAlias(message.senderDisplayName, message.sender);
-  template.querySelector('.message-time').textContent = formatTime(message.timestamp);
-  template.querySelector('.message-text').textContent = message.text || 'Mensaje cifrado';
+  template.querySelector(".message-author").textContent = formatAlias(
+    message.senderDisplayName,
+    message.sender,
+  );
+  template.querySelector(".message-time").textContent = formatTime(
+    message.timestamp,
+  );
+  template.querySelector(".message-text").textContent =
+    message.text || "Mensaje cifrado";
   messagesContainer.appendChild(template);
   scrollMessagesToBottom();
 }
 
 function renderFileMessage(fileMessage) {
   const template = fileTemplate.content.cloneNode(true);
-  template
-    .querySelector('.message-author')
-    .textContent = formatAlias(fileMessage.senderDisplayName, fileMessage.sender);
-  template.querySelector('.message-time').textContent = formatTime(fileMessage.timestamp);
+  template.querySelector(".message-author").textContent = formatAlias(
+    fileMessage.senderDisplayName,
+    fileMessage.sender,
+  );
+  template.querySelector(".message-time").textContent = formatTime(
+    fileMessage.timestamp,
+  );
 
-  const link = template.querySelector('.file-link');
+  const link = template.querySelector(".file-link");
   link.href = fileMessage.url;
-  link.setAttribute('download', fileMessage.name || fileMessage.filename);
-  template.querySelector('.file-name').textContent = fileMessage.name || 'Archivo';
-  template.querySelector('.file-size').textContent = humanFileSize(fileMessage.size);
+  link.setAttribute("download", fileMessage.name || fileMessage.filename);
+  template.querySelector(".file-name").textContent =
+    fileMessage.name || "Archivo";
+  template.querySelector(".file-size").textContent = humanFileSize(
+    fileMessage.size,
+  );
 
-  const securityMeta = template.querySelector('.file-security');
-  const entropyNode = template.querySelector('.file-entropy');
-  const lsbNode = template.querySelector('.file-lsb');
-  const stegoNode = template.querySelector('.file-stego');
+  const securityMeta = template.querySelector(".file-security");
+  const entropyNode = template.querySelector(".file-entropy");
+  const lsbNode = template.querySelector(".file-lsb");
+  const stegoNode = template.querySelector(".file-stego");
   const entropyLabel = formatEntropyLabel(fileMessage.entropy);
   const lsbLabel = formatLsbLabel(fileMessage.lsb);
   const stegoLabel = formatStegProbeLabel(fileMessage.stegProbe);
   const hasSecurityInfo = Boolean(entropyLabel || lsbLabel || stegoLabel);
 
   if (securityMeta) {
-    securityMeta.classList.toggle('hidden', !hasSecurityInfo);
+    securityMeta.classList.toggle("hidden", !hasSecurityInfo);
   }
   if (entropyNode) {
-    entropyNode.textContent = entropyLabel || '';
+    entropyNode.textContent = entropyLabel || "";
     const entropyValue = Number(fileMessage.entropy);
     entropyNode.classList.toggle(
-      'metric-alert',
+      "metric-alert",
       Number.isFinite(entropyValue) && entropyValue >= ENTROPY_ALERT_THRESHOLD,
     );
   }
   if (lsbNode) {
-    lsbNode.textContent = lsbLabel || '';
-    lsbNode.classList.toggle('metric-alert', Boolean(fileMessage.lsb?.suspicious));
+    lsbNode.textContent = lsbLabel || "";
+    lsbNode.classList.toggle(
+      "metric-alert",
+      Boolean(fileMessage.lsb?.suspicious),
+    );
   }
   if (stegoNode) {
-    stegoNode.textContent = stegoLabel || '';
-    stegoNode.classList.toggle('metric-alert', Boolean(fileMessage.stegProbe?.suspicious));
+    stegoNode.textContent = stegoLabel || "";
+    stegoNode.classList.toggle(
+      "metric-alert",
+      Boolean(fileMessage.stegProbe?.suspicious),
+    );
   }
 
   const previewElements = ensureFilePreviewElements(template);
   const descriptor = getFilePreviewDescriptor(fileMessage);
   resetFilePreview(previewElements);
 
-  if (descriptor?.mode === 'image' && previewElements.previewWrapper && previewElements.previewImage) {
+  if (
+    descriptor?.mode === "image" &&
+    previewElements.previewWrapper &&
+    previewElements.previewImage
+  ) {
     previewElements.previewImage.src = fileMessage.url;
     previewElements.previewImage.alt = `Vista previa de ${fileMessage.name || fileMessage.filename}`;
-    previewElements.previewWrapper.classList.add('as-image');
-    previewElements.previewWrapper.classList.remove('hidden');
+    previewElements.previewWrapper.classList.add("as-image");
+    previewElements.previewWrapper.classList.remove("hidden");
   } else if (
-    descriptor?.mode === 'meta' &&
+    descriptor?.mode === "meta" &&
     previewElements.previewWrapper &&
     previewElements.previewMeta &&
     previewElements.previewIcon &&
@@ -652,10 +744,12 @@ function renderFileMessage(fileMessage) {
     previewElements.previewIcon.textContent = descriptor.icon;
     previewElements.previewType.textContent = descriptor.label;
     previewElements.previewHint.textContent = descriptor.hint;
-    previewElements.previewMeta.classList.remove('hidden');
-    previewElements.previewMeta.classList.add(descriptor.accentClass || 'preview-generic');
-    previewElements.previewWrapper.classList.add('as-meta');
-    previewElements.previewWrapper.classList.remove('hidden');
+    previewElements.previewMeta.classList.remove("hidden");
+    previewElements.previewMeta.classList.add(
+      descriptor.accentClass || "preview-generic",
+    );
+    previewElements.previewWrapper.classList.add("as-meta");
+    previewElements.previewWrapper.classList.remove("hidden");
   }
 
   messagesContainer.appendChild(template);
@@ -664,38 +758,40 @@ function renderFileMessage(fileMessage) {
 }
 
 function ensureFilePreviewElements(fragment) {
-  if (!fragment || typeof fragment.querySelector !== 'function') {
+  if (!fragment || typeof fragment.querySelector !== "function") {
     return {};
   }
-  const messageRoot = fragment.querySelector('.message.file') || fragment.querySelector('.message');
+  const messageRoot =
+    fragment.querySelector(".message.file") ||
+    fragment.querySelector(".message");
   if (!messageRoot) {
     return {};
   }
-  let previewWrapper = messageRoot.querySelector('.file-preview');
+  let previewWrapper = messageRoot.querySelector(".file-preview");
   if (!previewWrapper) {
-    previewWrapper = document.createElement('div');
-    previewWrapper.className = 'file-preview hidden';
+    previewWrapper = document.createElement("div");
+    previewWrapper.className = "file-preview hidden";
 
-    const previewImage = document.createElement('img');
-    previewImage.className = 'file-preview-image';
-    previewImage.alt = 'Vista previa del archivo compartido';
-    previewImage.loading = 'lazy';
+    const previewImage = document.createElement("img");
+    previewImage.className = "file-preview-image";
+    previewImage.alt = "Vista previa del archivo compartido";
+    previewImage.loading = "lazy";
 
-    const previewMeta = document.createElement('div');
-    previewMeta.className = 'file-preview-meta hidden';
+    const previewMeta = document.createElement("div");
+    previewMeta.className = "file-preview-meta hidden";
 
-    const previewIcon = document.createElement('div');
-    previewIcon.className = 'file-preview-icon';
-    previewIcon.setAttribute('aria-hidden', 'true');
+    const previewIcon = document.createElement("div");
+    previewIcon.className = "file-preview-icon";
+    previewIcon.setAttribute("aria-hidden", "true");
 
-    const previewTexts = document.createElement('div');
-    previewTexts.className = 'file-preview-texts';
+    const previewTexts = document.createElement("div");
+    previewTexts.className = "file-preview-texts";
 
-    const previewType = document.createElement('span');
-    previewType.className = 'file-preview-type';
+    const previewType = document.createElement("span");
+    previewType.className = "file-preview-type";
 
-    const previewHint = document.createElement('span');
-    previewHint.className = 'file-preview-hint';
+    const previewHint = document.createElement("span");
+    previewHint.className = "file-preview-hint";
 
     previewTexts.appendChild(previewType);
     previewTexts.appendChild(previewHint);
@@ -707,50 +803,63 @@ function ensureFilePreviewElements(fragment) {
     messageRoot.appendChild(previewWrapper);
   }
 
-  const previewImage = previewWrapper.querySelector('.file-preview-image');
-  const previewMeta = previewWrapper.querySelector('.file-preview-meta');
-  const previewIcon = previewWrapper.querySelector('.file-preview-icon');
-  const previewType = previewWrapper.querySelector('.file-preview-type');
-  const previewHint = previewWrapper.querySelector('.file-preview-hint');
+  const previewImage = previewWrapper.querySelector(".file-preview-image");
+  const previewMeta = previewWrapper.querySelector(".file-preview-meta");
+  const previewIcon = previewWrapper.querySelector(".file-preview-icon");
+  const previewType = previewWrapper.querySelector(".file-preview-type");
+  const previewHint = previewWrapper.querySelector(".file-preview-hint");
 
-  return { previewWrapper, previewImage, previewMeta, previewIcon, previewType, previewHint };
+  return {
+    previewWrapper,
+    previewImage,
+    previewMeta,
+    previewIcon,
+    previewType,
+    previewHint,
+  };
 }
 
 function resetFilePreview(elements = {}) {
-  const { previewWrapper, previewImage, previewMeta, previewType, previewHint } = elements;
+  const {
+    previewWrapper,
+    previewImage,
+    previewMeta,
+    previewType,
+    previewHint,
+  } = elements;
 
-  previewWrapper?.classList.add('hidden');
-  previewWrapper?.classList.remove('as-image', 'as-meta');
+  previewWrapper?.classList.add("hidden");
+  previewWrapper?.classList.remove("as-image", "as-meta");
 
   if (previewImage) {
-    previewImage.src = '';
-    previewImage.alt = 'Vista previa del archivo compartido';
+    previewImage.src = "";
+    previewImage.alt = "Vista previa del archivo compartido";
   }
 
   if (previewMeta) {
-    previewMeta.classList.add('hidden');
+    previewMeta.classList.add("hidden");
     PREVIEW_ACCENT_CLASSES.forEach((cls) => previewMeta.classList.remove(cls));
   }
 
   if (previewType) {
-    previewType.textContent = '';
+    previewType.textContent = "";
   }
   if (previewHint) {
-    previewHint.textContent = '';
+    previewHint.textContent = "";
   }
 }
 
 function renderSystemMessage(systemMessage) {
   const template = systemTemplate.content.cloneNode(true);
-  const text = template.querySelector('.message-text');
+  const text = template.querySelector(".message-text");
   const alias = formatAlias(systemMessage.displayName, systemMessage.user);
 
-  if (systemMessage.type === 'join') {
+  if (systemMessage.type === "join") {
     text.textContent = `${alias} se ha conectado`;
-  } else if (systemMessage.type === 'leave') {
+  } else if (systemMessage.type === "leave") {
     text.textContent = `${alias} se ha desconectado`;
   } else {
-    text.textContent = systemMessage.message || 'Notificación del sistema';
+    text.textContent = systemMessage.message || "Notificación del sistema";
   }
 
   messagesContainer.appendChild(template);
@@ -759,30 +868,30 @@ function renderSystemMessage(systemMessage) {
 
 function renderSecurityAlert(alert) {
   const template = systemTemplate.content.cloneNode(true);
-  const text = template.querySelector('.message-text');
+  const text = template.querySelector(".message-text");
   const entropyDetails = formatEntropyLabel(alert?.entropy);
   const lsbDetails = formatLsbLabel(alert?.lsb);
   const stegDetails = formatStegProbeLabel(alert?.stegProbe);
   const combinedDetails = [entropyDetails, lsbDetails, stegDetails]
     .filter(Boolean)
-    .join(' · ');
-  const suffix = combinedDetails ? ` (${combinedDetails})` : '';
+    .join(" · ");
+  const suffix = combinedDetails ? ` (${combinedDetails})` : "";
   const hints = [];
   if (alert?.lsb?.suspicious) {
-    hints.push('Posible ocultamiento en los píxeles de la imagen.');
+    hints.push("Posible ocultamiento en los píxeles de la imagen.");
   }
   if (alert?.stegProbe?.requires_password) {
-    hints.push('Se detectó un contenedor esteganográfico protegido.');
+    hints.push("Se detectó un contenedor esteganográfico protegido.");
   } else if (alert?.stegProbe?.suspicious) {
-    hints.push('steghide reportó datos ocultos.');
+    hints.push("steghide reportó datos ocultos.");
   }
-  const extraHint = hints.length ? ` ${hints.join(' ')}` : '';
+  const extraHint = hints.length ? ` ${hints.join(" ")}` : "";
   text.textContent = `Alerta de seguridad: ${
-    alert?.message || 'Actividad sospechosa detectada'
+    alert?.message || "Actividad sospechosa detectada"
   }${suffix}${extraHint}`;
   messagesContainer.appendChild(template);
   scrollMessagesToBottom();
-  showToast(alert?.message || 'Se detectó actividad sospechosa.');
+  showToast(alert?.message || "Se detectó actividad sospechosa.");
 }
 
 function addRecentFile(fileMessage) {
@@ -792,20 +901,20 @@ function addRecentFile(fileMessage) {
     recentFiles.pop();
   }
 
-  recentFilesList.innerHTML = '';
+  recentFilesList.innerHTML = "";
 
   recentFiles.forEach((file) => {
-    const li = document.createElement('li');
-    const link = document.createElement('a');
+    const li = document.createElement("li");
+    const link = document.createElement("a");
     link.href = file.url;
     link.textContent = `${formatAlias(file.senderDisplayName, file.sender)} · ${
       file.name || file.filename
     }`;
-    link.setAttribute('download', file.name || file.filename);
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
+    link.setAttribute("download", file.name || file.filename);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
 
-    const meta = document.createElement('span');
+    const meta = document.createElement("span");
     const metaDetails = [humanFileSize(file.size)];
     const entropyDetail = formatEntropyLabel(file.entropy);
     const lsbDetail = formatLsbLabel(file.lsb);
@@ -813,8 +922,8 @@ function addRecentFile(fileMessage) {
     if (entropyDetail) metaDetails.push(entropyDetail);
     if (lsbDetail) metaDetails.push(lsbDetail);
     if (stegoDetail) metaDetails.push(stegoDetail);
-    meta.textContent = metaDetails.join(' · ');
-    meta.classList.add('user-mail');
+    meta.textContent = metaDetails.join(" · ");
+    meta.classList.add("user-mail");
 
     li.appendChild(link);
     li.appendChild(meta);
@@ -823,18 +932,21 @@ function addRecentFile(fileMessage) {
 }
 
 function formatTime(timestamp) {
-  if (!timestamp) return '';
+  if (!timestamp) return "";
   const date = new Date(timestamp);
-  return date.toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
+  return date.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 function humanFileSize(size) {
-  if (!size) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
+  if (!size) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const exponent = Math.min(
+    Math.floor(Math.log(size) / Math.log(1024)),
+    units.length - 1,
+  );
   const value = size / Math.pow(1024, exponent);
   return `${value.toFixed(value < 10 && exponent > 0 ? 1 : 0)} ${units[exponent]}`;
 }
@@ -842,40 +954,40 @@ function humanFileSize(size) {
 function formatEntropyLabel(entropy) {
   const value = Number(entropy);
   if (!Number.isFinite(value)) {
-    return '';
+    return "";
   }
   return `Entropía ${value.toFixed(2)} bits`;
 }
 
 function formatLsbLabel(lsb) {
-  if (!lsb || typeof lsb.ratio !== 'number' || Number.isNaN(lsb.ratio)) {
-    return '';
+  if (!lsb || typeof lsb.ratio !== "number" || Number.isNaN(lsb.ratio)) {
+    return "";
   }
   const percentage = (lsb.ratio * 100).toFixed(1);
   const base = `LSB ${percentage}%`;
   const rgbChannels = Array.isArray(lsb.rgb_channels) ? lsb.rgb_channels : [];
   const flaggedChannels = rgbChannels.filter((channel) => channel?.suspicious);
   if (flaggedChannels.length > 0) {
-    const label = flaggedChannels.map((channel) => channel.channel).join('/');
+    const label = flaggedChannels.map((channel) => channel.channel).join("/");
     return `${base} RGB(${label}) ⚠️`;
   }
   return lsb.suspicious ? `${base} ⚠️` : base;
 }
 
 function formatStegProbeLabel(stegProbe) {
-  if (!stegProbe || !stegProbe.status || stegProbe.status === 'missing') {
-    return '';
+  if (!stegProbe || !stegProbe.status || stegProbe.status === "missing") {
+    return "";
   }
   const statusLabels = {
-    password_required: 'STEGO 🔐',
-    embedded_data: 'STEGO ⚠️',
-    possibly_encrypted: 'STEGO cifrado',
-    error: 'Stego indeterminado',
-    no_data: '',
+    password_required: "STEGO 🔐",
+    embedded_data: "STEGO ⚠️",
+    possibly_encrypted: "STEGO cifrado",
+    error: "Stego indeterminado",
+    no_data: "",
   };
-  const baseLabel = statusLabels[stegProbe.status] || '';
+  const baseLabel = statusLabels[stegProbe.status] || "";
   if (!baseLabel) {
-    return '';
+    return "";
   }
   if (stegProbe.requires_password) {
     return `${baseLabel} 🔑`;
@@ -889,24 +1001,24 @@ function scrollMessagesToBottom() {
 
 function showToast(message) {
   if (!message) return;
-  const toast = document.createElement('div');
-  toast.className = 'toast';
+  const toast = document.createElement("div");
+  toast.className = "toast";
   toast.textContent = message;
   document.body.appendChild(toast);
   requestAnimationFrame(() => {
-    toast.classList.add('visible');
+    toast.classList.add("visible");
   });
   setTimeout(() => {
-    toast.classList.remove('visible');
-    toast.addEventListener('transitionend', () => {
+    toast.classList.remove("visible");
+    toast.addEventListener("transitionend", () => {
       toast.remove();
     });
   }, 3200);
 }
 
 function formatHash(hash) {
-  if (!hash) return '---';
-  return hash.replace(/[^A-Za-z0-9]/g, '').slice(0, 10) || '---';
+  if (!hash) return "---";
+  return hash.replace(/[^A-Za-z0-9]/g, "").slice(0, 10) || "---";
 }
 
 function formatAlias(displayName, hash) {
@@ -917,28 +1029,28 @@ function formatAlias(displayName, hash) {
 }
 
 function configureFileUpload(canUpload) {
-  const uploadWrapper = fileInput.closest('label');
+  const uploadWrapper = fileInput.closest("label");
   if (canUpload) {
-    fileInput.removeAttribute('disabled');
-    uploadWrapper?.classList.remove('disabled');
+    fileInput.removeAttribute("disabled");
+    uploadWrapper?.classList.remove("disabled");
     if (uploadHint) {
-      uploadHint.textContent = '';
-      uploadHint.classList.add('hidden');
+      uploadHint.textContent = "";
+      uploadHint.classList.add("hidden");
     }
   } else {
-    fileInput.setAttribute('disabled', 'true');
-    uploadWrapper?.classList.add('disabled');
+    fileInput.setAttribute("disabled", "true");
+    uploadWrapper?.classList.add("disabled");
     if (uploadHint) {
       uploadHint.textContent =
-        'Adjuntar archivos está disponible únicamente en salas multimedia aprobadas por un administrador.';
-      uploadHint.classList.remove('hidden');
+        "Adjuntar archivos está disponible únicamente en salas multimedia aprobadas por un administrador.";
+      uploadHint.classList.remove("hidden");
     }
   }
 }
 
 function shouldDisplayThumbnail(fileMessage) {
-  const mime = (fileMessage?.mimetype || '').toLowerCase();
-  if (mime.startsWith('image/')) {
+  const mime = (fileMessage?.mimetype || "").toLowerCase();
+  if (mime.startsWith("image/")) {
     return true;
   }
   const extension = getFileExtension(fileMessage);
@@ -950,35 +1062,37 @@ function getFilePreviewDescriptor(fileMessage) {
     return null;
   }
   if (shouldDisplayThumbnail(fileMessage)) {
-    return { mode: 'image' };
+    return { mode: "image" };
   }
 
-  const group = FILE_PREVIEW_GROUPS.find((item) => matchesPreviewGroup(fileMessage, item));
+  const group = FILE_PREVIEW_GROUPS.find((item) =>
+    matchesPreviewGroup(fileMessage, item),
+  );
   if (group) {
     return {
-      mode: 'meta',
+      mode: "meta",
       label: group.label,
-      icon: group.icon || '📎',
-      accentClass: group.accentClass || 'preview-generic',
+      icon: group.icon || "📎",
+      accentClass: group.accentClass || "preview-generic",
       hint: formatPreviewHint(fileMessage, group),
     };
   }
 
   // Fallback genérico si no coincide con ningún grupo
   return {
-    mode: 'meta',
-    label: 'Archivo compartido',
-    icon: '📎',
-    accentClass: 'preview-generic',
+    mode: "meta",
+    label: "Archivo compartido",
+    icon: "📎",
+    accentClass: "preview-generic",
     hint: formatPreviewHint(fileMessage),
   };
 }
 
 function matchesPreviewGroup(fileMessage, group = {}) {
-  if (typeof group.predicate === 'function') {
+  if (typeof group.predicate === "function") {
     return group.predicate(fileMessage);
   }
-  const mime = (fileMessage?.mimetype || '').toLowerCase();
+  const mime = (fileMessage?.mimetype || "").toLowerCase();
   if (group.mimetypes?.some((type) => mime === type)) {
     return true;
   }
@@ -990,39 +1104,43 @@ function matchesPreviewGroup(fileMessage, group = {}) {
 }
 
 function getFileExtension(fileMessage) {
-  const lowerName = (fileMessage?.name || fileMessage?.filename || '').toLowerCase();
-  const lastDot = lowerName.lastIndexOf('.');
+  const lowerName = (
+    fileMessage?.name ||
+    fileMessage?.filename ||
+    ""
+  ).toLowerCase();
+  const lastDot = lowerName.lastIndexOf(".");
   if (lastDot === -1) {
-    return '';
+    return "";
   }
   return lowerName.slice(lastDot);
 }
 
 function formatPreviewHint(fileMessage, group) {
-  if (group?.key === 'link') {
-    return getDisplayHost(fileMessage?.url) || 'Abrir enlace seguro';
+  if (group?.key === "link") {
+    return getDisplayHost(fileMessage?.url) || "Abrir enlace seguro";
   }
   const extension = getFileExtension(fileMessage);
   const sizeLabel = humanFileSize(fileMessage?.size);
   const parts = [];
   if (extension) {
-    parts.push(extension.replace('.', '').toUpperCase());
+    parts.push(extension.replace(".", "").toUpperCase());
   }
   if (sizeLabel) {
     parts.push(sizeLabel);
   }
-  return parts.join(' • ') || 'Haz clic para descargar';
+  return parts.join(" • ") || "Haz clic para descargar";
 }
 
 function getDisplayHost(url) {
   if (!url) {
-    return '';
+    return "";
   }
   try {
     const parsed = new URL(url, window.location.origin);
-    return parsed.hostname.replace(/^www\./, '');
+    return parsed.hostname.replace(/^www\./, "");
   } catch (error) {
-    return '';
+    return "";
   }
 }
 
@@ -1040,34 +1158,37 @@ function isExternalUrl(url) {
 
 function updateSecurityIndicator(state, message) {
   if (!securityIndicator) return;
-  const dot = securityIndicator.querySelector('.status-dot');
-  const label = securityIndicator.querySelector('.security-label');
+  const dot = securityIndicator.querySelector(".status-dot");
+  const label = securityIndicator.querySelector(".security-label");
   if (message && label) {
     label.textContent = message;
   }
   if (!dot) return;
-  dot.classList.remove('secure', 'warning');
-  if (state === 'secure') {
-    dot.classList.add('secure');
+  dot.classList.remove("secure", "warning");
+  if (state === "secure") {
+    dot.classList.add("secure");
   } else {
-    dot.classList.add('warning');
+    dot.classList.add("warning");
   }
 }
 
 async function importSessionKey(base64Key) {
   const raw = base64ToArrayBuffer(base64Key);
-  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, [
+    "encrypt",
+    "decrypt",
+  ]);
 }
 
 async function encryptMessage(plainText) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt(
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       iv,
     },
     cryptoKey,
-    encoder.encode(plainText)
+    encoder.encode(plainText),
   );
   return {
     iv: arrayBufferToBase64(iv.buffer),
@@ -1080,18 +1201,18 @@ async function decryptMessage(payload) {
   const content = base64ToArrayBuffer(payload.content);
   const decrypted = await crypto.subtle.decrypt(
     {
-      name: 'AES-GCM',
+      name: "AES-GCM",
       iv: new Uint8Array(iv),
     },
     cryptoKey,
-    content
+    content,
   );
   return decoder.decode(decrypted);
 }
 
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
+  let binary = "";
   bytes.forEach((b) => {
     binary += String.fromCharCode(b);
   });

@@ -1,5 +1,5 @@
 // ==================== DETECCIÓN DE TIPOS MIME CON MAGIC NUMBERS ====================
-const fs = require('fs');
+const fs = require("fs");
 
 /**
  * Array de firmas conocidas de archivos (magic numbers)
@@ -8,40 +8,51 @@ const fs = require('fs');
  */
 const MAGIC_NUMBERS = [
   {
-    mime: 'image/png',
-    ext: 'png',
+    mime: "image/png",
+    ext: "png",
     // PNG file signature
-    signatures: ['89504e470d0a1a0a'],
+    signatures: ["89504e470d0a1a0a"],
   },
   {
-    mime: 'image/jpeg',
-    ext: 'jpg',
-    // JPEG SOI (Start of Image) markers
-    signatures: ['ffd8ffe0', 'ffd8ffe1', 'ffd8ffe2', 'ffd8ffe3', 'ffd8ffe8'],
+    mime: "image/jpeg",
+    ext: "jpg",
+    // JPEG SOI markers — APP0 (JFIF), APP1 (EXIF), APP2, APP3, APP8,
+    // raw DQT (ffd8ffdb), APP13 Photoshop (ffd8ffed), Adobe (ffd8ffee), APP9
+    signatures: [
+      "ffd8ffe0",
+      "ffd8ffe1",
+      "ffd8ffe2",
+      "ffd8ffe3",
+      "ffd8ffe8",
+      "ffd8ffdb",
+      "ffd8ffee",
+      "ffd8ffed",
+      "ffd8ffe9",
+    ],
   },
   {
-    mime: 'image/gif',
-    ext: 'gif',
+    mime: "image/gif",
+    ext: "gif",
     // GIF 87a y 89a
-    signatures: ['474946383761', '474946383961'],
+    signatures: ["474946383761", "474946383961"],
   },
   {
-    mime: 'application/pdf',
-    ext: 'pdf',
+    mime: "application/pdf",
+    ext: "pdf",
     // PDF header
-    signatures: ['25504446'],
+    signatures: ["25504446"],
   },
   {
-    mime: 'application/zip',
-    ext: 'zip',
+    mime: "application/zip",
+    ext: "zip",
     // ZIP file signatures
-    signatures: ['504b0304', '504b0506', '504b0708'],
+    signatures: ["504b0304", "504b0506", "504b0708"],
   },
   {
-    mime: 'image/bmp',
-    ext: 'bmp',
+    mime: "image/bmp",
+    ext: "bmp",
     // BMP header
-    signatures: ['424d'],
+    signatures: ["424d"],
   },
 ];
 
@@ -52,10 +63,7 @@ const MAGIC_NUMBERS = [
  * @returns {string} Representación hexadecimal
  */
 function bufferToHex(buffer, length) {
-  return buffer
-    .subarray(0, length)
-    .toString('hex')
-    .toLowerCase();
+  return buffer.subarray(0, length).toString("hex").toLowerCase();
 }
 
 /**
@@ -82,7 +90,7 @@ function looksLikeText(buffer) {
   // Analizar primeros 256 bytes
   const slice = buffer.subarray(0, 256);
   let printable = 0;
-  
+
   // Contar caracteres imprimibles
   for (const byte of slice) {
     // Byte nulo = probablemente binario
@@ -90,11 +98,16 @@ function looksLikeText(buffer) {
       return false;
     }
     // Tab, LF, CR, o rango ASCII imprimible (32-126)
-    if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte <= 126)) {
+    if (
+      byte === 9 ||
+      byte === 10 ||
+      byte === 13 ||
+      (byte >= 32 && byte <= 126)
+    ) {
       printable += 1;
     }
   }
-  
+
   // Si >90% es imprimible, probablemente sea texto
   return printable / (slice.length || 1) > 0.9;
 }
@@ -110,7 +123,7 @@ function looksLikeText(buffer) {
 function detectFileType(filePath) {
   // Leer archivo completo
   const buffer = fs.readFileSync(filePath);
-  
+
   // Rechazar archivos vacíos
   if (!buffer.length) {
     return null;
@@ -127,7 +140,7 @@ function detectFileType(filePath) {
 
   // 2. Heurística de texto plano
   if (looksLikeText(buffer)) {
-    return { mime: 'text/plain', ext: 'txt' };
+    return { mime: "text/plain", ext: "txt" };
   }
 
   // 3. No se pudo determinar

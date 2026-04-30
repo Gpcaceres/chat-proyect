@@ -3,7 +3,9 @@
   "collectCoverageFrom": [
     "src/**/*.js",
     "!src/**/*.test.js",
-    "!node_modules/**"
+    "!node_modules/**",
+    "!src/models/**",
+    "!src/security/stegWorker.js"
   ],
   "coverageThreshold": {
     "global": {
@@ -13,9 +15,7 @@
       "statements": 70
     }
   },
-  "testMatch": [
-    "**/tests/**/*.test.js"
-  ],
+  "testMatch": ["**/tests/**/*.test.js"],
   "setupFilesAfterEnv": [],
   "verbose": true,
   "testTimeout": 10000

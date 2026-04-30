@@ -1,19 +1,16 @@
 import json
+import math
 import os
 import shutil
+import struct
 import subprocess
 import sys
-<<<<<<< HEAD
-import struct
-import math
-=======
 from io import BytesIO
 
 try:  # Pillow es opcional; si no existe, usamos heurísticas de bytes
     from PIL import Image  # type: ignore
 except Exception:  # pragma: no cover - dependencia opcional
     Image = None
->>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
 
 
 def build_response(**kwargs):
@@ -116,7 +113,7 @@ def detect_steganographic_patterns(data):
         b'\x50\x4b\x07\x08': ('ZIP data descriptor', 0.40),
         b'\x1f\x8b\x08': ('GZIP detected', 0.42),
         b'\x42\x5a\x68': ('BZIP2 detected', 0.35),
-        b'\x7z\xbc\xaf\x27\x1c': ('7-Zip detected', 0.35),
+        b'\x37\x7a\xbc\xaf\x27\x1c': ('7-Zip detected', 0.35),
     }
     
     # Buscar en CUALQUIER LUGAR (OpenStego incrusta en cola)
@@ -248,204 +245,149 @@ def detect_trailing_bytes(data):
     return tail_bytes
 
 
-<<<<<<< HEAD
 def detect_anomalies(data, filename):
-    """Detecta anomalías en la estructura del archivo - MENOS ESTRICTO"""
+    """Detecta anomalías estructurales en el archivo."""
     anomalies = []
-    
-    # Verificar estructura de archivo esperada
-    if filename.lower().endswith(('.jpg', '.jpeg')):
-        if not data.startswith(b'\xff\xd8'):
+    fname = os.path.basename(filename).lower()
+
+    if fname.endswith(('.jpg', '.jpeg')):
+        if not data[:2] == b'\xff\xd8':
             anomalies.append('JPEG header missing or invalid')
         if data[-2:] != b'\xff\xd9':
             anomalies.append('JPEG footer missing or corrupted')
-    
-    elif filename.lower().endswith('.png'):
-        if not data.startswith(b'\x89PNG'):
+    elif fname.endswith('.png'):
+        if not data[:4] == b'\x89PNG':
             anomalies.append('PNG header missing or invalid')
         if len(data) < 8 or data[-8:] != b'\x00\x00\x00\x00IEND\xaeB`\x82':
             anomalies.append('PNG footer missing or corrupted')
-    
-    elif filename.lower().endswith('.gif'):
-        if not data.startswith((b'GIF87a', b'GIF89a')):
+    elif fname.endswith('.gif'):
+        if not (data[:6] in (b'GIF87a', b'GIF89a')):
             anomalies.append('GIF header missing or invalid')
         if not data.endswith(b'\x3b'):
             anomalies.append('GIF footer missing')
-    
-    # Solo marcar como anómalo si hay ratios REALMENTE altos
-    entropy_ratio = analyze_entropy_chunks(data)
-    if entropy_ratio > 0.8:  # Más de 80% de chunks con alta entropía
-        anomalies.append(f'Very high entropy ratio: {entropy_ratio:.2%}')
-    
-    # Verificar distribución de entropía - más permisivo
+
     std_dev, high_ent_ratio = analyze_entropy_distribution(data)
-    if std_dev > 3.5:  # Varianza muy alta
-        anomalies.append(f'Abnormal entropy variance detected: {std_dev:.2f}')
-    if high_ent_ratio > 0.7:  # Más de 70% de chunks
-        anomalies.append(f'Too many high-entropy chunks: {high_ent_ratio:.2%}')
-    
+    if std_dev > 3.5:
+        anomalies.append(f'Abnormal entropy variance: {std_dev:.2f}')
+    if high_ent_ratio > 0.8:
+        anomalies.append(f'Very high entropy ratio: {high_ent_ratio:.2%}')
+
     return anomalies
-=======
+
+
 def probe_steghide(target):
-    """Intenta detectar datos ocultos utilizando steghide.
-
-    Cuando el binario no está disponible simplemente marcamos la función
-    como no soportada y continuamos con el resto de heurísticas.
-    """
-
+    """Detecta datos ocultos usando steghide (sin contraseña). Devuelve resultado vacío si no está disponible."""
     steghide_path = shutil.which('steghide')
     if not steghide_path:
-        return {
-            'supported': False,
-            'available': False,
-            'suspicious': False,
-            'status': 'missing',
-        }
+        return {'available': False, 'suspicious': False, 'status': 'missing'}
 
     try:
         result = subprocess.run(
             [steghide_path, 'info', target, '-p', ''],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=15,
+            capture_output=True, text=True, check=False, timeout=15,
         )
-    except Exception as exc:  # pragma: no cover - dependiente del sistema
-        return {
-            'supported': False,
-            'available': True,
-            'suspicious': False,
-            'status': 'error',
-            'error': str(exc),
-        }
+    except Exception as exc:
+        return {'available': True, 'suspicious': False, 'status': 'error', 'error': str(exc)}
 
-    combined_output = f"{result.stdout or ''}\n{result.stderr or ''}".strip()
-    normalized = combined_output.lower()
-
-    status = 'no_data'
+    combined = f"{result.stdout or ''}\n{result.stderr or ''}".strip()
+    normalized = combined.lower()
     suspicious = False
-    requires_password = False
-    hint = ''
+    status = 'clean'
 
     if 'could not extract any data with that passphrase' in normalized:
-        status = 'password_required'
         suspicious = True
-        requires_password = True
-        hint = 'Se detectó un contenedor que requiere contraseña para extraer.'
+        status = 'password_protected'
     elif 'embedded data' in normalized and result.returncode == 0:
+        suspicious = True
         status = 'embedded_data'
-        suspicious = True
-        hint = 'steghide indicó la presencia de datos ocultos.'
     elif 'encryption algorithm' in normalized or 'passphrase' in normalized:
-        status = 'possibly_encrypted'
         suspicious = True
-        requires_password = 'passphrase' in normalized
-        hint = 'La salida de steghide sugiere cifrado o contraseña.'
+        status = 'possibly_encrypted'
     elif result.returncode != 0:
         status = 'error'
 
-    truncated_output = combined_output[:2000]
-
     return {
-        'supported': True,
         'available': True,
         'suspicious': suspicious,
-        'requires_password': requires_password,
         'status': status,
-        'hint': hint,
-        'output': truncated_output,
+        'output': combined[:500],
     }
 
 
 def analyze_lsb_distribution(data):
-    """Analiza la distribución de bits menos significativos (LSB).
+    """Analiza distribución de LSB para detectar esteganografía LSB.
+    Usa Pillow (análisis por píxel RGB) si está disponible; si no, muestrea bytes."""
 
-    Si Pillow está disponible, se realiza sobre los pixeles reales. De lo contrario,
-    se evalúa una muestra de bytes del archivo para detectar distribuciones que
-    parezcan demasiado uniformes (indicativo de esteganografía LSB).
-    También se inspeccionan individualmente los canales RGB para detectar
-    esteganografía que únicamente altere un canal de color.
-    """
-
-    def _lsb_suspicion(ones, total_bits, threshold=0.02):
-        if total_bits == 0:
+    def _lsb_suspicious(ones, total, threshold=0.008):
+        if total < 5000:
             return False
-        ratio = ones / total_bits
-        # Una distribución excesivamente uniforme alrededor de 0.5 puede indicar
-        # inserción de datos cifrados en los megapíxeles de la imagen.
-        return total_bits >= 5000 and abs(ratio - 0.5) < threshold
+        return abs(ones / total - 0.5) < threshold
 
     if Image is not None:
         try:
             with Image.open(BytesIO(data)) as img:
                 img = img.convert('RGB')
                 width, height = img.size
-                total_pixels = width * height
-                if total_pixels == 0:
-                    raise ValueError('invalid_image')
-                sample_step = max(1, total_pixels // 400000)
+                if width * height == 0:
+                    raise ValueError('empty')
+                step = max(1, (width * height) // 400000)
                 ones = 0
-                total_bits = 0
-                channel_ones = {'r': 0, 'g': 0, 'b': 0}
-                channel_bits = {'r': 0, 'g': 0, 'b': 0}
-                for index, (r, g, b) in enumerate(img.getdata()):
-                    if index % sample_step != 0:
+                total = 0
+                ch_ones = [0, 0, 0]
+                ch_total = [0, 0, 0]
+                for i, (r, g, b) in enumerate(img.getdata()):
+                    if i % step != 0:
                         continue
-                    ones += (r & 1) + (g & 1) + (b & 1)
-                    total_bits += 3
-                    channel_ones['r'] += r & 1
-                    channel_ones['g'] += g & 1
-                    channel_ones['b'] += b & 1
-                    channel_bits['r'] += 1
-                    channel_bits['g'] += 1
-                    channel_bits['b'] += 1
-                ratio = (ones / total_bits) if total_bits else 0
+                    for j, v in enumerate((r, g, b)):
+                        bit = v & 1
+                        ones += bit
+                        ch_ones[j] += bit
+                        total += 1
+                        ch_total[j] += 1
+                ratio = ones / total if total else 0
                 channel_stats = []
-                rgb_alert = False
-                for key, label in (('r', 'R'), ('g', 'G'), ('b', 'B')):
-                    bits = channel_bits[key]
-                    channel_ratio = (channel_ones[key] / bits) if bits else 0
-                    channel_suspicious = bits >= 1500 and abs(channel_ratio - 0.5) < 0.018
-                    rgb_alert = rgb_alert or channel_suspicious
-                    channel_stats.append(
-                        {
-                            'channel': label,
-                            'ratio': channel_ratio,
-                            'bits': bits,
-                            'suspicious': channel_suspicious,
-                        }
-                    )
+                channel_alert = False
+                for idx, label in enumerate('RGB'):
+                    cr = ch_ones[idx] / ch_total[idx] if ch_total[idx] else 0
+                    alert = ch_total[idx] >= 1500 and abs(cr - 0.5) < 0.008
+                    channel_alert = channel_alert or alert
+                    channel_stats.append({'channel': label, 'ratio': cr, 'suspicious': alert})
+                # Require BOTH the overall ratio AND at least one channel to be anomalous
+                # to avoid false positives on natural JPEG images (JPEG DCT naturally
+                # produces pixel LSBs close to 0.5 for high-detail images)
+                suspicious = _lsb_suspicious(ones, total) and channel_alert
                 return {
-                    'supported': True,
                     'method': 'pillow_rgb',
                     'ratio': ratio,
-                    'pixels_sampled': total_bits // 3,
+                    'pixels_sampled': total,
                     'rgb_channels': channel_stats,
-                    'rgb_conversion': True,
-                    'suspicious': _lsb_suspicion(ones, total_bits) or rgb_alert,
-                    'width': width,
-                    'height': height,
+                    'suspicious': suspicious,
+                    'score': 0.50 if suspicious else 0.0,
                 }
         except Exception:
-            # Caerá al análisis de bytes si Pillow falla o el archivo no es imagen
-            pass
+            pass  # fall through to byte sampling
 
-    ones = 0
-    total_bits = 0
-    sample_step = max(1, len(data) // 500000)
-    for idx in range(0, len(data), sample_step):
-        ones += data[idx] & 1
-        total_bits += 1
-    ratio = (ones / total_bits) if total_bits else 0
+    # Fallback: byte-level LSB sampling
+    step = max(1, len(data) // 500000)
+    ones = sum((data[i] & 1) for i in range(0, len(data), step))
+    total = len(range(0, len(data), step))
+    ratio = ones / total if total else 0
+    suspicious = _lsb_suspicious(ones, total, threshold=0.008)
     return {
-        'supported': bool(total_bits),
         'method': 'byte_stream',
         'ratio': ratio,
-        'bytes_sampled': total_bits,
-        'rgb_conversion': False,
-        'suspicious': _lsb_suspicion(ones, total_bits, threshold=0.015),
+        'bytes_sampled': total,
+        'suspicious': suspicious,
+        'score': 0.50 if suspicious else 0.0,
     }
->>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
+
+
+def _steghide_score(probe_result):
+    """Converts probe_steghide result into a numeric confidence score."""
+    if not probe_result or not probe_result.get('suspicious'):
+        return 0.0
+    status = probe_result.get('status', '')
+    return 0.95 if status == 'embedded_data' else 0.85 if status == 'password_protected' else 0.75
 
 
 def main():
@@ -461,68 +403,43 @@ def main():
     with open(target, 'rb') as handle:
         data = handle.read()
 
-    # Ejecutar análisis
     overall_entropy = calculate_entropy(data)
     binwalk_result = analyze_with_binwalk(target)
     tail_bytes = detect_trailing_bytes(data)
-<<<<<<< HEAD
     structure_anomalies = detect_anomalies(data, target)
     steg_anomalies, steg_score = detect_steganographic_patterns(data)
-    
     all_anomalies = structure_anomalies + steg_anomalies
-    
-    """
-    CRITERIOS MÁXIMAMENTE AGRESIVOS - Rechazar CUALQUIER indicador de esteganografía:
-    
-    RECHAZAR SI:
-    1. tail_bytes > 0 (CUALQUIER dato después del fin = sospechoso)
-    2. steg_score > 0.30 (bajo umbral para detectar patrones)
-    3. Binwalk encontró archivos comprimidos
-    4. Estructura anómala
-    
-    PERMITIR SI:
-    - EXACTAMENTE 0 bytes de tail
-    - Estructura de imagen perfecta
-    - Ningún indicador de compresión
-    """
-    
-    # MEDIDA AGRESIVA 1: Cualquier tail data es sospechoso
-    tail_suspicious = tail_bytes > 0  # Reducido de 200 a 0
-    
-    # MEDIDA AGRESIVA 2: Bajo umbral de steg_score
-    steg_suspicious = steg_score > 0.25  # Reducido de 0.35 a 0.25
-    
-    # MEDIDA AGRESIVA 3: Cualquier hallazgo de binwalk es sospechoso
-    binwalk_suspicious = len(binwalk_result.get('findings', [])) > 0
-    
-    # MEDIDA AGRESIVA 4: Cualquier anomalía de estructura
-    structure_suspicious = len(structure_anomalies) > 0  # Reducido de >= 3 a > 0
-    
-    # Contar indicadores
-    indicators = sum([
-        tail_suspicious,
-        steg_suspicious,
-        binwalk_suspicious,
-        structure_suspicious,
-    ])
-    
-    # RECHAZAR SI EXISTE CUALQUIER INDICADOR
-    suspicious = (
-        tail_suspicious or        # Cualquier tail
-        steg_suspicious or        # Bajo steg_score
-        binwalk_suspicious or     # Cualquier hallazgo
-        structure_suspicious      # Cualquier anomalía
-=======
-    lsb_analysis = analyze_lsb_distribution(data)
-    stego_probe = probe_steghide(target)
 
-    suspicious = (
-        binwalk_result.get('suspicious', False)
-        or tail_bytes > 512
-        or lsb_analysis.get('suspicious', False)
-        or stego_probe.get('suspicious', False)
->>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
-    )
+    # Optional detectors (require extra dependencies)
+    lsb_analysis = analyze_lsb_distribution(data)
+    steghide_info = probe_steghide(target)
+
+    # ── Weighted scoring ──────────────────────────────────────────────────────
+    # Each detector returns an independent confidence score (0–1).
+    # A single strong signal is sufficient; multiple weak signals boost confidence.
+
+    lsb_score = 0.50 if lsb_analysis.get('suspicious') else 0.0
+    steghide_score = _steghide_score(steghide_info)
+    binwalk_score = 0.80 if binwalk_result.get('suspicious') else 0.0
+    # Ignore tiny tails (≤10 bytes) as they are natural JPEG/camera padding
+    tail_score = 0.70 if tail_bytes > 512 else (0.40 if tail_bytes > 10 else 0.0)
+
+    scores = {
+        'steg': steg_score,          # tail + archive sig + entropy jump (JS-style analysis)
+        'lsb': lsb_score,            # LSB pixel distribution (Pillow or byte sampling)
+        'steghide': steghide_score,  # steghide probe tool
+        'binwalk': binwalk_score,    # binwalk embedded archive detection
+        'tail': tail_score,          # raw trailing-byte heuristic
+    }
+
+    final_score = max(scores.values())
+
+    # Boost when 2+ independent signals agree
+    signals_firing = sum(1 for s in scores.values() if s >= 0.50)
+    if signals_firing >= 2:
+        final_score = min(final_score + 0.10, 1.0)
+
+    suspicious = final_score >= 0.65
 
     build_response(
         supported=binwalk_result.get('supported', False),
@@ -530,14 +447,12 @@ def main():
         anomalies=all_anomalies,
         suspicious=suspicious,
         tail_bytes=tail_bytes,
-<<<<<<< HEAD
-        steg_score=steg_score,
+        steg_score=final_score,
         entropy=overall_entropy,
-        indicators_count=indicators,
-=======
+        indicators_count=signals_firing,
+        scores=scores,
         lsb_analysis=lsb_analysis,
-        steghide_probe=stego_probe,
->>>>>>> b07dfd1e4df73ca57b0cd74cb9df334606627cf2
+        steghide_probe=steghide_info,
     )
 
 

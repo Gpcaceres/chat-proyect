@@ -1,0 +1,181 @@
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+PASS tests/unit/totp.test.js
+  Módulo TOTP - Autenticación de Dos Factores (RFC 6238)
+    verifyTotp
+      √ debe aceptar token válido actual (8 ms)
+      √ debe retornar false si no hay secreto configurado (1 ms)
+      √ debe retornar false si no hay secreto (1 ms)
+      √ debe retornar false para token vacío (2 ms)
+      √ debe retornar false para token inválido (3 ms)
+      √ debe manejar espacios en blanco en token (1 ms)
+      √ debe rechazar tokens no-numéricos (1 ms)
+      √ debe rechazar tokens con longitud incorrecta (1 ms)
+      √ debe tolerar desviaciones de ±1 ventana (1 ms)
+      √ debe manejar errores en secreto base64 inválido (1 ms)
+      √ debe convertir entrada no-string a string (2 ms)
+    Comportamiento de tolerancia de tiempo
+      √ debe verificar ventanas: actual, -30s, +30s (1 ms)
+    Edge cases
+      √ debe manejar secreto con padding variable (3 ms)
+      √ debe ser resistente a inyecciones (2 ms)
+      √ debe rechazar valores muy grandes (2 ms)
+
+PASS tests/unit/fileType.test.js
+  Módulo FileType - Detección de Tipos MIME
+    PNG Detection
+      √ debe detectar archivo PNG válido (10 ms)
+    JPEG Detection
+      √ debe detectar archivo JPEG válido (SOI FFD8FFE0) (4 ms)
+      √ debe detectar variantes JPEG (FFD8FFE1) (5 ms)
+    PDF Detection
+      √ debe detectar archivo PDF válido (3 ms)
+    ZIP Detection
+      √ debe detectar archivo ZIP válido (PK\x03\x04) (4 ms)
+    Plain Text Detection
+      √ debe detectar archivo de texto plano (6 ms)
+      √ debe detectar UTF-8 como texto (6 ms)
+      √ debe detectar JSON como texto (10 ms)
+    Edge cases
+      √ debe retornar null para archivo vacío (4 ms)
+      √ debe retornar null para datos binarios desconocidos (4 ms)
+      √ debe rechazar archivos con bytes nulos (binarios) (4 ms)
+      √ debe retornar null si archivo no existe (26 ms)
+      √ debe manejar archivos grandes correctamente (5 ms)
+    Validación de integridad
+      √ debe detectar extensión falseada (.zip con firma PNG) (3 ms)
+      √ debe detectar múltiples tipos si se proporcionan múltiples firmas (2 ms)
+
+PASS tests/unit/rateLimiter.test.js
+  rateLimiter - Limitador de Velocidad
+    Solicitudes dentro del límite
+      √ debe permitir la primera solicitud (9 ms)
+      √ debe permitir exactamente MAX_REQUESTS solicitudes consecutivas (2 ms)
+    Solicitudes que exceden el límite
+      √ debe rechazar con 429 después de superar el límite (5 ms)
+      √ debe incluir mensaje de error en la respuesta 429 (3 ms)
+    Aislamiento por IP
+      √ debe rastrear IPs de forma independiente (2 ms)
+      √ debe bloquear ipA pero permitir ipB tras saturar ipA (2 ms)
+    Reset de ventana temporal
+      √ debe reiniciar el contador cuando la ventana expira (5 ms)
+
+PASS tests/unit/crypto.test.js
+  Módulo Crypto - AES-256-GCM
+    encryptText
+      √ debe cifrar texto y retornar objeto con iv, content, authTag (11 ms)
+      √ debe generar IV diferente para cada cifrado (1 ms)
+      √ debe manejar textos vacíos (1 ms)
+      √ debe convertir entrada no-string a string (1 ms)
+    decryptText
+      √ debe descifrar texto cifrado correctamente (3 ms)
+      √ debe lanzar error si el tag de autenticación es inválido (28 ms)
+      √ debe lanzar error si el contenido está corrupto (4 ms)
+      √ debe lanzar error con secreto incorrecto (5 ms)
+    hashSecret - PBKDF2
+      √ debe generar hash con salt aleatorio (81 ms)
+      √ debe usar salt proporcionado (58 ms)
+      √ dos hashes del mismo password con distinto salt deben ser diferentes (123 ms)
+      √ debe generar hash reproducible con mismo salt (121 ms)
+    verifyHash - Verificación timing-safe
+      √ debe verificar contraseña correcta (114 ms)
+      √ debe rechazar contraseña incorrecta (108 ms)
+      √ debe ser sensible a cambios mínimos en contraseña (114 ms)
+    generateSessionKey
+      √ debe generar clave de sesión cifrada (1 ms)
+      √ debe generar diferentes claves en cada llamada
+      √ debe poder descifrarse correctamente (1 ms)
+    Integración: Ciclo completo cifrado-descifrado
+      √ debe cifrar y descifrar múltiples mensajes secuencialmente (2 ms)
+      √ debe mantener integridad con payloads grandes (1 ms)
+
+PASS tests/unit/token.test.js
+  Módulo Token - JWT HMAC-SHA256
+    signToken
+      √ debe generar JWT válido (9 ms)
+      √ debe incluir expiración en el payload (2 ms)
+      √ debe incluir todos los campos del payload original (1 ms)
+      √ debe generar firmas diferentes con secretos diferentes (2 ms)
+      √ debe usar expiración por defecto de 3600 segundos (5 ms)
+    verifyToken
+      √ debe verificar token válido (3 ms)
+      √ debe retornar payload verificado (2 ms)
+      √ debe lanzar error con token inválido (26 ms)
+      √ debe lanzar error con token incompleto (28 ms)
+      √ debe lanzar error si firma es incorrecta (4 ms)
+      √ debe lanzar error con secreto incorrecto (3 ms)
+      √ debe lanzar error si token está expirado (1108 ms)
+      √ debe rechazar tokens con payload modificado (1 ms)
+    Ciclo completo: sign -> verify
+      √ debe verificar token generado correctamente (2 ms)
+      √ debe funcionar con diferentes tiempos de expiración (1 ms)
+
+PASS tests/security/steganography.test.js
+  Steganography Detection
+    √ debe detectar imagen PNG normal como segura (208 ms)
+    √ debe detectar datos aleatorios como sospechosos (170 ms)
+    √ debe detectar entropía alta en chunks (146 ms)
+    √ debe detectar compresión anormal múltiple (159 ms)
+    √ debe incluir razones de detección (145 ms)
+    √ debe reportar compression score para análisis detallado (163 ms)
+
+PASS tests/security/security.test.js (51.793 s)
+  Pruebas de Seguridad - OWASP Top 10
+    A1: Inyección
+      √ debe prevenir SQL injection en hash (94 ms)
+      √ debe sanitizar entrada en encriptación (4 ms)
+      √ debe rechazar payloads sospechosos en JWT (1 ms)
+    A02: Fallo de Autenticación
+      √ debe rechazar contraseña débil después de análisis (190 ms)
+      √ debe usar timing-safe comparison para prevenir timing attacks (183 ms)
+      √ debe expirar tokens después de tiempo configurado (1121 ms)
+    A03: Inyección de Datos
+      √ debe cifrar payloads JSON correctamente (2 ms)
+      √ debe detectar modificación de datos cifrados (13 ms)
+    A05: Control de Acceso
+      √ debe validar scope en JWT (1 ms)
+      √ debe rechazar token con scope modificado (4 ms)
+    A06: Información Sensible Expuesta
+      √ no debe almacenar contraseña en texto plano (51 ms)
+      √ debe usar salt aleatorio para cada contraseña (100 ms)
+      √ debe cifrar datos sensibles en tránsito
+    Pruebas CVSS
+      √ debe prevenir ataque de fuerza bruta (CVSS) (49339 ms)
+      √ debe manejar entradas muy grandes sin crash (DoS) (3 ms)
+    Esteganografía - Detección de Contenido Oculto
+      √ debe analizar datos sin esteganografía aparente (1 ms)
+      √ debe detectar datos altamente aleatorios (potencial compresión/cifrado)
+
+------------------|---------|----------|---------|---------|-------------------
+File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+------------------|---------|----------|---------|---------|-------------------
+All files         |   42.76 |    27.21 |   61.76 |   44.05 |                   
+ models           |       0 |        0 |       0 |       0 |                   
+  Admin.js        |       0 |        0 |       0 |       0 | 2-43              
+  Attendance.js   |       0 |      100 |     100 |       0 | 2-33              
+  AuditLog.js     |       0 |        0 |     100 |       0 | 2-27              
+  Room.js         |       0 |        0 |     100 |       0 | 2-67              
+ security         |   45.03 |    28.22 |   65.62 |   46.32 |                   
+  crypto.js       |   96.15 |    83.33 |     100 |   96.15 | 27                
+  fileType.js     |     100 |    94.11 |     100 |     100 | 112               
+  rateLimiter.js  |   80.95 |       75 |      50 |   80.95 | 20-25             
+  stegAnalyzer.js |   70.58 |      100 |      60 |   70.58 | 8-9,19-21         
+  stegWorker.js   |       0 |        0 |       0 |       0 | 1-365             
+  token.js        |     100 |    92.85 |     100 |     100 | 33                
+  totp.js         |   95.45 |    85.71 |     100 |   95.23 | 75                
+------------------|---------|----------|---------|---------|-------------------
+Jest: "global" coverage threshold for statements (70%) not met: 42.76%
+Jest: "global" coverage threshold for branches (70%) not met: 27.21%
+Jest: "global" coverage threshold for lines (70%) not met: 44.05%
+Jest: "global" coverage threshold for functions (70%) not met: 61.76%
+Test Suites: 7 passed, 7 total
+Tests:       95 passed, 95 total
+Snapshots:   0 total
+Time:        54.013 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
