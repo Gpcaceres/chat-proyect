@@ -154,6 +154,10 @@ function sanitizeNickname(nickname) {
   return nickname.trim().replace(/\s+/g, " ");
 }
 
+function normalizeNicknameForUniqueness(nickname) {
+  return sanitizeNickname(nickname).normalize("NFKC").toLocaleLowerCase("es");
+}
+
 async function ensureAdminAccount() {
   const username = (process.env.ADMIN_USERNAME || "admin").trim();
   const password = process.env.ADMIN_PASSWORD || "Admin#1234";
@@ -232,7 +236,7 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint, ip) {
     sessionRegistry.set(roomId, new Map());
   }
   const roomSessions = sessionRegistry.get(roomId);
-  const normalized = nickname.toLowerCase();
+  const normalized = normalizeNicknameForUniqueness(nickname);
   const clientIp = normalizeIp(ip);
 
   // Remove any stale session from the exact same fingerprint (same browser tab re-joining).
@@ -243,6 +247,10 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint, ip) {
         throw new Error(
           "Ya tienes una sesión activa en esta sala con otro usuario. Cierra tu sesión actual primero.",
         );
+      }
+      // Only prune orphan sessions. If socket is active, nickname is already in use.
+      if (session.socketId) {
+        throw new Error("El nickname ya está en uso en la sala.");
       }
       roomSessions.delete(sessionId);
     }
@@ -263,7 +271,11 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint, ip) {
           "Este dispositivo ya está conectado a la sala con otro usuario. Solo se permite una sesión por dispositivo.",
         );
       }
-      // Same nickname + same IP = stale session from same user, remove and re-register.
+      // Same nickname + same IP must not create a parallel login.
+      // Allow only if the previous session is orphaned (without active socket).
+      if (session.socketId) {
+        throw new Error("El nickname ya está en uso en la sala.");
+      }
       roomSessions.delete(sessionId);
     }
   }
