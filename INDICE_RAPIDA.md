@@ -336,7 +336,3 @@ Ubicación: src/security/fileType.js
 **"¿Cómo se cifra la comunicación?"**
 → Leer: `src/security/crypto.js` (servidor) y `public/js/app.js` (cliente)
 
----
-
-**Generado**: 18 de noviembre de 2025  
-**Objetivo**: Facilitar búsqueda rápida en documentación comentada

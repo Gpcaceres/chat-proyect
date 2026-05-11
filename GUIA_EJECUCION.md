@@ -399,7 +399,3 @@ Para problemas o preguntas sobre:
 - **Código**: Consulta `COMENTARIOS_CODIGO.md`
 - **Seguridad**: Consulta `src/security/`
 
----
-
-**Última actualización**: 18 de noviembre de 2025  
-**Status**: ✅ TODAS LAS PRUEBAS PASADAS - LISTO PARA USAR

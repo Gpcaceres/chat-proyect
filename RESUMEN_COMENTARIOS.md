@@ -245,8 +245,3 @@
 
 ✅ **Referencias a RFCs y estándares incluidas**
 
----
-
-**Generado el**: 18 de noviembre de 2025  
-**Proyecto**: ViroChat - Seguridad Informática  
-**Documentador**: GitHub Copilot

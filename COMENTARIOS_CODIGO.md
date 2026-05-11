@@ -2,7 +2,7 @@
 
 ## 📄 Resumen de Archivos Comentados
 
-Este documento proporciona una descripción detallada de todos los fragmentos de código en el proyecto ViroChat con explicaciones en español.
+Este documento proporciona una descripción detallada de todos los fragmentos de código en el proyecto ViroChat con explicaciones.
 
 ---
 
@@ -437,7 +437,4 @@ Obtiene lista de usuarios conectados a una sala
 5. **Cifrado E2E**: AES-256-GCM en navegador
 6. **Auditoría**: Toda acción se registra con firma HMAC
 
----
 
-**Última actualización**: 18 de noviembre de 2025
-**Proyecto**: ViroChat - Chat Seguro con Análisis de Seguridad

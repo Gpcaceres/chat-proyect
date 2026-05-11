@@ -191,6 +191,3 @@ Time:        ~90 seconds
 
 ✅ **¡Listo para usar!**
 
----
-
-**Última actualización**: 18 de noviembre de 2025
