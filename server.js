@@ -115,6 +115,42 @@ const upload = multer({
   },
 });
 
+const activeSessions = new Map(); // userId -> socketId
+
+io.on('connection', (socket) => {
+    socket.on('join_room', ({ userId, roomId }) => {
+        // Verificar si el usuario ya tiene una sesión activa
+        if (activeSessions.has(userId)) {
+            const oldSocketId = activeSessions.get(userId);
+            io.to(oldSocketId).emit('force_disconnect', 'Tu cuenta se ha abierto en otro dispositivo.');
+        }
+        
+        activeSessions.set(userId, socket.id);
+        socket.join(roomId);
+    });
+
+    socket.on('disconnect', () => {
+        // Limpiar al desconectarse
+        for (let [uId, sId] of activeSessions.entries()) {
+            if (sId === socket.id) activeSessions.delete(uId);
+        }
+    });
+});
+
+
+socket.on('message_read', ({ messageId, roomId, userId }) => {
+    // Aquí podrías actualizar el estado en la base de datos (AuditLog o Message)
+    socket.to(roomId).emit('message_status_updated', { messageId, status: 'read', readBy: userId });
+});
+
+
+socket.on('force_disconnect', (mensaje) => {
+    alert(mensaje);
+    localStorage.removeItem('user_token'); // Limpia la sesión
+    window.location.reload(); // O redirige al index.html
+});
+
+
 app.use("/uploads", express.static(uploadsDir, { fallthrough: false }));
 app.use(express.static(path.join(__dirname, "public")));
 

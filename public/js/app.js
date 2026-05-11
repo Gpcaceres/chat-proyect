@@ -1406,3 +1406,13 @@ function base64ToArrayBuffer(base64) {
   }
   return buffer;
 }
+
+
+// Al recibir el evento de actualización
+socket.on('message_status_updated', ({ messageId, status }) => {
+    const messageElement = document.getElementById(`msg-${messageId}`);
+    if (messageElement && status === 'read') {
+        messageElement.querySelector('.status-icon').innerHTML = '✔✔'; // Doble check
+        messageElement.querySelector('.status-icon').style.color = '#34b7f1'; // Color azul (estilo WhatsApp)
+    }
+});
