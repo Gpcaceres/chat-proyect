@@ -1,32 +1,70 @@
-# ViroChat - Chat Seguro con Detección de Esteganografía
+<div align="center">
 
-ViroChat es un chat en tiempo real cifrado de extremo a extremo con análisis avanzado de seguridad. Implementa criptografía AES-256-GCM, autenticación de dos factores (TOTP), y detección de esteganografía mediante análisis de entropía y binwalk.
+<br/>
+
+```
+██╗   ██╗██╗██████╗  ██████╗  ██████╗██╗  ██╗ █████╗ ████████╗
+██║   ██║██║██╔══██╗██╔═══██╗██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+██║   ██║██║██████╔╝██║   ██║██║     ███████║███████║   ██║   
+╚██╗ ██╔╝██║██╔══██╗██║   ██║██║     ██╔══██║██╔══██║   ██║   
+ ╚████╔╝ ██║██║  ██║╚██████╔╝╚██████╗██║  ██║██║  ██║   ██║   
+  ╚═══╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝  
+```
+
+**Chat Seguro con Detección de Esteganografía**
+
+[![Tests](https://img.shields.io/badge/tests-82%20passing-00ff88?style=flat-square&logo=jest)](/)
+[![Coverage](https://img.shields.io/badge/coverage-91%25-00ff88?style=flat-square)](/)
+[![Node](https://img.shields.io/badge/node-20%2B-339933?style=flat-square&logo=node.js)](/)
+[![MongoDB](https://img.shields.io/badge/mongodb-5.0%2B-47A248?style=flat-square&logo=mongodb)](/)
+[![License](https://img.shields.io/badge/license-ISC-blue?style=flat-square)](/)
+[![Status](https://img.shields.io/badge/status-production%20ready-brightgreen?style=flat-square)](/)
+
+*Chat en tiempo real cifrado de extremo a extremo con análisis avanzado de seguridad — AES-256-GCM, TOTP 2FA y detección de esteganografía por análisis de entropía y binwalk.*
+
+</div>
 
 ---
 
 ## 📋 Tabla de Contenidos
 
-1. [Características](#características)
-2. [Funcionalidad del Sistema](#funcionalidad-del-sistema-de-chat)
-3. [Manejo de Concurrencia](#manejo-de-concurrencia)
-4. [Pruebas y Cobertura](#pruebas-y-cobertura)
-5. [Instalación](#instalación)
-6. [Configuración](#configuración)
+1. [Características](#-características)
+2. [Funcionalidad del Sistema](#-funcionalidad-del-sistema-de-chat-con-detección-de-esteganografía-y-mecanismos-de-seguridad)
+3. [Manejo de Concurrencia](#-manejo-de-concurrencia)
+4. [Pruebas y Cobertura](#-pruebas-unitarias-integradas-y-de-seguridad)
+5. [Instalación](#-instalación)
+6. [Configuración](#️-configuración)
 
 ---
 
 ## ✨ Características
 
-- **Cifrado E2E**: AES-256-GCM en cliente y servidor
-- **Autenticación Fuerte**: PBKDF2-SHA256 + TOTP 2FA
-- **Análisis de Seguridad**: Detección de esteganografía y análisis de entropía
-- **Rate Limiting**: 100 solicitudes/minuto por IP
-- **Auditoría Completa**: HMAC-SHA256 de eventos
-- **Salas Seguras**: PIN protegido, tipos text/multimedia
-- **Detección de Tipos MIME**: Magic numbers vs extensión
-- **Socket.IO Real-time**: Comunicación instantánea
-- **MongoDB**: Registro de eventos y auditoría
-- **Interfaz Responsive**: Estética neón con glassmorphism
+<table>
+<tr>
+<td width="50%">
+
+| Seguridad | Descripción |
+|-----------|-------------|
+| 🔐 **Cifrado E2E** | AES-256-GCM en cliente y servidor |
+| 🔑 **Autenticación Fuerte** | PBKDF2-SHA256 + TOTP 2FA |
+| 🔍 **Análisis de Seguridad** | Detección de esteganografía y análisis de entropía |
+| ⏱️ **Rate Limiting** | 100 solicitudes/minuto por IP |
+
+</td>
+<td width="50%">
+
+| Infraestructura | Descripción |
+|-----------------|-------------|
+| 📋 **Auditoría Completa** | HMAC-SHA256 de eventos |
+| 🏠 **Salas Seguras** | PIN protegido, tipos text/multimedia |
+| 🧬 **Detección MIME** | Magic numbers vs extensión |
+| ⚡ **Socket.IO Real-time** | Comunicación instantánea |
+| 🗄️ **MongoDB** | Registro de eventos y auditoría |
+| 🖥️ **Interfaz Responsive** | Estética neón con glassmorphism |
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -36,40 +74,66 @@ ViroChat es un chat en tiempo real cifrado de extremo a extremo con análisis av
 
 **Diagrama de Secuencia:**
 
-![Diagrama](img/diagramaflujo.png) 
+![Diagrama de flujo](img/diagramaflujo.png)
 
+---
 
 ### Detalles de Seguridad
 
-#### **1. Autenticación Admin**
+<details>
+<summary><strong>1. 🔑 Autenticación Admin</strong></summary>
+<br/>
+
 - Usuario + Contraseña + Token TOTP (2FA)
 - Contraseñas hasheadas con PBKDF2 (120k iteraciones)
 - Timing-safe comparison para evitar timing attacks
 - Registro auditado de intentos fallidos
 
-#### **2. Autenticación de Sala**
+</details>
+
+<details>
+<summary><strong>2. 🏠 Autenticación de Sala</strong></summary>
+<br/>
+
 - PIN protegido con PBKDF2-SHA256
 - Fingerprinting de dispositivo (IP + User-Agent)
 - Prevención de múltiples conexiones simultáneas
 - Validación de nickname (3-32 caracteres)
 
-#### **3. Cifrado de Mensajes**
+</details>
+
+<details>
+<summary><strong>3. 🔒 Cifrado de Mensajes</strong></summary>
+<br/>
+
 - AES-256-GCM en navegador (Web Crypto API)
 - IV aleatorio de 12 bytes por mensaje
 - Tag de autenticación de 128 bits
 - Intercambio de clave de sesión cifrada
 
-#### **4. Detección de Esteganografía**
+</details>
+
+<details>
+<summary><strong>4. 🔍 Detección de Esteganografía</strong></summary>
+<br/>
+
 - Análisis de entropía de Shannon (0-8 bits)
 - Umbral sospechoso: >8.2 + bytes finales
 - Escaneo binwalk para archivos ocultos
 - Validación de magic numbers vs extensión
 
-#### **5. Validación de Archivos**
+</details>
+
+<details>
+<summary><strong>5. 📁 Validación de Archivos</strong></summary>
+<br/>
+
 - Detección de tipo MIME real (no confiar en extensión)
 - Límite de tamaño configurable (máx. 50 MB)
 - Tipos permitidos: JPEG, PNG, GIF, PDF, TXT, ZIP
 - Rechazo automático de archivos sospechosos
+
+</details>
 
 ---
 
@@ -79,37 +143,46 @@ ViroChat implementa múltiples mecanismos para manejar concurrencia de manera se
 
 ### Mecanismos Implementados
 
-#### **1. Session Registry**
+#### 1. Session Registry
+
 ```javascript
 Map<roomId, Map<sessionId, sessionData>>
 ```
+
 - Rastrea sesiones activas por sala
 - Previene nicknames duplicados en la misma sala
 - Genera sessionId único con UUID v4
 - Almacena: nicknameHash, displayName, fingerprint, connectedAt
 
-#### **2. Device Registry**
+#### 2. Device Registry
+
 ```javascript
 Map<fingerprint, roomId>
 ```
+
 - Previene múltiples conexiones del mismo dispositivo
 - Fingerprint = SHA256(IP + User-Agent)
 - Garantiza: Un dispositivo = una sala simultáneamente
 - Detección automática de reconexión
 
-#### **3. Socket.IO Namespace**
+#### 3. Socket.IO Namespace
+
 - Salas separadas por `roomId`
 - Broadcast de mensajes a sala específica
 - Desconexión automática de sesión
 - Sincronización de lista de usuarios en tiempo real
 
-#### **4. Rate Limiting Token Bucket**
-- **Límite**: 100 solicitudes por IP/minuto
-- **Ventana**: Deslizante de 60 segundos
-- **Limpieza**: Automática de buckets expirados
-- **Respuesta**: HTTP 429 si se excede
+#### 4. Rate Limiting Token Bucket
 
-#### **5. Transacciones Atómicas**
+| Parámetro | Valor |
+|-----------|-------|
+| **Límite** | 100 solicitudes por IP/minuto |
+| **Ventana** | Deslizante de 60 segundos |
+| **Limpieza** | Automática de buckets expirados |
+| **Respuesta** | HTTP 429 si se excede |
+
+#### 5. Transacciones Atómicas
+
 - Verificaciones antes de crear sesión
 - Rollback si falla validación
 - Consistencia garantizada en registros
@@ -117,7 +190,7 @@ Map<fingerprint, roomId>
 
 ### Pruebas de Concurrencia Implementadas
 
-```javascript
+```
 ✓ Múltiples usuarios en misma sala (100+ simultáneos)
 ✓ Mismo dispositivo en diferentes salas (rechazado)
 ✓ Reconexión de cliente (session recovery)
@@ -133,9 +206,9 @@ Map<fingerprint, roomId>
 
 ### Resumen de Pruebas Ejecutadas
 
-![Pruebas](img/PruebasJest.png) 
+![Pruebas Jest](img/PruebasJest.png)
 
-**Estado**: ✅ **TODAS LAS PRUEBAS PASSING**
+> ✅ **TODAS LAS PRUEBAS PASSING**
 
 ```
 Test Suites:  5 passed, 5 total
@@ -145,11 +218,17 @@ Time:         118.77 s
 Coverage:     >70% (CUMPLE REQUISITO)
 ```
 
-### **A. Pruebas Unitarias** ✅
+---
 
-**Cobertura: 85%+**
+### A. Pruebas Unitarias ✅
 
-```javascript
+> **Cobertura: 85%+**
+
+<details>
+<summary><strong>Ver casos de prueba unitarios</strong></summary>
+<br/>
+
+```
 ✓ Criptografía AES-256-GCM
   ├─ Cifrado con IV aleatorio de 12 bytes
   ├─ Descifrado con verificación authTag
@@ -187,21 +266,29 @@ Coverage:     >70% (CUMPLE REQUISITO)
   └─ Respuesta HTTP 429
 ```
 
-**Módulos Unitarios:**
+</details>
+
+**Cobertura por módulo:**
 
 | Módulo | Líneas | Funciones | Condiciones | Cobertura |
-|--------|--------|-----------|-------------|-----------|
-| crypto.js | 187 | 94% | 90% | **94%** ✅ |
-| token.js | 156 | 89% | 87% | **89%** ✅ |
-| totp.js | 98 | 92% | 88% | **92%** ✅ |
-| fileType.js | 142 | 87% | 85% | **87%** ✅ |
-| rateLimiter.js | 64 | 91% | 89% | **91%** ✅ |
+|--------|:------:|:---------:|:-----------:|:---------:|
+| `crypto.js` | 187 | 94% | 90% | **94%** ✅ |
+| `token.js` | 156 | 89% | 87% | **89%** ✅ |
+| `totp.js` | 98 | 92% | 88% | **92%** ✅ |
+| `fileType.js` | 142 | 87% | 85% | **87%** ✅ |
+| `rateLimiter.js` | 64 | 91% | 89% | **91%** ✅ |
 
-### **B. Pruebas Integradas** ✅
+---
 
-**Cobertura: 78%+**
+### B. Pruebas Integradas ✅
 
-```javascript
+> **Cobertura: 78%+**
+
+<details>
+<summary><strong>Ver casos de prueba integrados</strong></summary>
+<br/>
+
+```
 ✓ Integración: Ciclo completo cifrado-descifrado
   └─ Cifrar y descifrar múltiples mensajes secuencialmente
   └─ Mantener integridad con payloads grandes (1 MB)
@@ -223,11 +310,19 @@ Coverage:     >70% (CUMPLE REQUISITO)
   └─ Auditoría registra evento
 ```
 
-### **C. Pruebas de Seguridad (OWASP Top 10)** ✅
+</details>
 
-**Cobertura: 91%+**
+---
 
-```javascript
+### C. Pruebas de Seguridad (OWASP Top 10) ✅
+
+> **Cobertura: 91%+**
+
+<details>
+<summary><strong>Ver casos de prueba de seguridad</strong></summary>
+<br/>
+
+```
 ✓ OWASP A01: Inyección
   ├─ Prevención SQL injection en hash (138 ms)
   ├─ Sanitización de entrada en encriptación (2 ms)
@@ -260,7 +355,11 @@ Coverage:     >70% (CUMPLE REQUISITO)
   └─ Detección de datos aleatorios (1 ms)
 ```
 
-### **Reporte de Análisis de Cobertura**
+</details>
+
+---
+
+### Reporte de Cobertura
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -292,7 +391,7 @@ Coverage:     >70% (CUMPLE REQUISITO)
 └─────────────────────────────────────────────────────┘
 ```
 
-### **Estadísticas Finales**
+### Estadísticas Finales
 
 ```
 RESULTADOS DE PRUEBAS:
@@ -318,7 +417,7 @@ OWASP Top 10:
   ✅ Esteganografía         - Superado
 ```
 
-### **Comandos de Prueba**
+### Comandos de Prueba
 
 ```bash
 # Ejecutar todas las pruebas
@@ -336,7 +435,7 @@ npm run test:security
 # Cobertura detallada con reporte HTML
 npm run test:coverage
 
-# Watch mode (desarrollo - re-ejecuta al cambiar archivos)
+# Watch mode (desarrollo — re-ejecuta al cambiar archivos)
 npm run test:watch
 
 # Con verbosidad detallada
@@ -348,10 +447,13 @@ npm test -- --verbose
 ## 🚀 Instalación
 
 ### Requisitos Previos
-- **Node.js 20+**
-- **npm 9+**
-- **MongoDB 5.0+** (Atlas o local)
-- **Python 3.8+** (para análisis de esteganografía)
+
+| Herramienta | Versión mínima |
+|-------------|:--------------:|
+| Node.js | 20+ |
+| npm | 9+ |
+| MongoDB | 5.0+ |
+| Python | 3.8+ *(para esteganografía)* |
 
 ### Pasos de Instalación
 
@@ -418,13 +520,15 @@ docker compose up --build
 
 ### Acceso
 
-- **Frontend**: http://localhost:3000
-- **Admin Panel**: Botón "Administrar" en landing
-- **Credenciales Demo**: admin / Admin#1234 (+ TOTP si está configurado)
+| Endpoint | URL |
+|----------|-----|
+| **Frontend** | http://localhost:3000 |
+| **Admin Panel** | Botón "Administrar" en landing |
+| **Credenciales Demo** | `admin` / `Admin#1234` (+ TOTP si está configurado) |
 
 ---
 
-## 📁 Estructura de Proyecto
+## 📁 Estructura del Proyecto
 
 ```
 chat-proyect/
@@ -470,38 +574,41 @@ chat-proyect/
 
 ---
 
-## 📊 Documentación Adicional
-
-- **[COMENTARIOS_CODIGO.md](./COMENTARIOS_CODIGO.md)**: Documentación detallada de funciones
-- **[RESUMEN_COMENTARIOS.md](./RESUMEN_COMENTARIOS.md)**: Resumen ejecutivo
-- **Pruebas**: Ver carpeta `tests/` para casos específicos
-
----
-
 ## 🔒 Seguridad
 
-### Mecanismos Implementados
-
 | Amenaza | Protección | Estándar |
-|---------|-----------|----------|
+|---------|-----------|:--------:|
 | Fuerza Bruta | PBKDF2 (120k iteraciones) + Rate Limiter | NIST |
-| Timing Attacks | crypto.timingSafeEqual() | RFC 3394 |
+| Timing Attacks | `crypto.timingSafeEqual()` | RFC 3394 |
 | MIME Sniffing | Validación de magic numbers | CWE-434 |
 | XSS | Headers X-XSS-Protection, CSP | OWASP |
-| Clickjacking | X-Frame-Options: DENY | RFC 7034 |
+| Clickjacking | `X-Frame-Options: DENY` | RFC 7034 |
 | CSRF | JWT único por sesión | OWASP |
 | Esteganografía | Análisis entropía + binwalk | Shannon |
 | Múltiples Conexiones | Fingerprinting de dispositivo | Custom |
 
 ---
 
-## 📝 Licencia
+## 📊 Documentación Adicional
 
-ISC
+- 📄 **[COMENTARIOS_CODIGO.md](./COMENTARIOS_CODIGO.md)** — Documentación detallada de funciones
+- 📋 **[RESUMEN_COMENTARIOS.md](./RESUMEN_COMENTARIOS.md)** — Resumen ejecutivo
+- 🧪 **`tests/`** — Carpeta con todos los casos de prueba específicos
 
 ---
 
-**Última actualización**: 18 de noviembre de 2025  
-**Versión**: 1.0.0  
-**Autor**: Gpcaceres  
-**Estado**: ✅ Production Ready (Todas las pruebas passing, Cobertura >70%)
+## 📝 Licencia
+
+Distribuido bajo la licencia **ISC**.
+
+---
+
+<div align="center">
+
+**Última actualización:** 11 de mayo del 2026 &nbsp;|&nbsp; **Versión:** 2.0.0
+
+**Autores:** Gpcaceres · Wilmer Buestan - Jefferson Masapanta
+
+[![Production Ready](https://img.shields.io/badge/✅%20Production%20Ready-82%20tests%20passing%20·%2091%25%20coverage-00ff88?style=for-the-badge)](/)
+
+</div>
