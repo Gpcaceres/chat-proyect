@@ -1161,3 +1161,79 @@ a {
     display: none;
   }
 }
+
+
+
+/* Contenedor Táctico del Logo */
+.logo-wrapper {
+    position: relative;
+    padding: 20px;
+    display: inline-block;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(0, 255, 65, 0.2); /* Verde Matrix tenue */
+    background: rgba(0, 20, 0, 0.3);
+}
+
+/* Animación Principal: Agrandarse y Brillar */
+.tactical-zoom {
+    width: 180px; /* Ajusta según tu necesidad */
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.5));
+    animation: zoomPulse 4s ease-in-out infinite;
+}
+
+@keyframes zoomPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.5));
+    }
+    50% {
+        transform: scale(1.15); /* Se agranda un 15% */
+        filter: drop-shadow(0 0 25px rgba(0, 255, 65, 0.8));
+    }
+}
+
+/* Efecto de Escaneo Láser */
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(0, 255, 65, 0.8);
+    box-shadow: 0 0 15px #00ff41;
+    z-index: 10;
+    animation: scanning 3s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes scanning {
+    0% { top: 0%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+
+/* Esquinas del HUD (Look Militar) */
+.corner {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border: 2px solid #00ff41;
+    border-radius: 2px;
+}
+
+.top-left { top: -5px; left: -5px; border-right: none; border-bottom: none; }
+.top-right { top: -5px; right: -5px; border-left: none; border-bottom: none; }
+.bottom-left { bottom: -5px; left: -5px; border-right: none; border-top: none; }
+.bottom-right { bottom: -5px; right: -5px; border-left: none; border-top: none; }
+
+/* Tipografía Táctica */
+.tactical-title {
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 3px;
+    color: #00ff41;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+}
