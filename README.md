@@ -206,7 +206,7 @@ Map<fingerprint, roomId>
 
 ### Resumen de Pruebas Ejecutadas
 
-![Pruebas Jest](img/PruebasJest.png)
+![Pruebas Jest](img/PruebasJest.jpeg)
 
 > ✅ **TODAS LAS PRUEBAS PASSING**
 
