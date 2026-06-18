@@ -296,7 +296,7 @@ function registerSession(roomId, nickname, nicknameHash, fingerprint, ip) {
           });
         }
         throw new Error(
-          "Este dispositivo ya está conectado a la sala con otro usuario. Solo se permite una sesión por dispositivo.",
+          "Acceso bloqueado: este dispositivo ya tiene una sesión activa en esta sala. Cierra la sesión actual antes de ingresar con otro usuario.",
         );
       }
       // Same nickname + same IP must not create a parallel login.
